@@ -24,10 +24,14 @@
   
   <!-- RRule for recurrence -->
   <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
+
+  <!-- Filtrex for safe expression evaluation -->
+  <script src="https://cdn.jsdelivr.net/npm/filtrex@3/dist/filtrex.min.js"></script>
   
   <!-- Alpine Plugins -->
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3/dist/cdn.min.js"></script>
-  
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/sort@3/dist/cdn.min.js"></script>
+
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
   
@@ -39,6 +43,10 @@
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     .modal-backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
     .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* Drag and drop styles */
+    .sortable-ghost { opacity: 0.4; background: #e0e7ff; }
+    .sortable-drag { background: white; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    .sortable-chosen { cursor: grabbing; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen" x-cloak x-data="checkMate()" x-init="init()">
@@ -224,9 +232,10 @@
           </div>
           
           <!-- Sprint Tasks -->
-          <div class="space-y-3">
+          <div class="space-y-3" x-sort="handleTaskReorder">
             <template x-for="task in getSprintTasks(selectedSprint)" :key="task.id">
-              <div class="task-card bg-gray-50 rounded-lg p-4 border-l-4"
+              <div x-sort:item="task.id"
+                   class="task-card bg-gray-50 rounded-lg p-4 border-l-4 cursor-grab active:cursor-grabbing"
                    :class="{
                      'opacity-60': task.skipState?.type === 'for_day' && !task.skipState?.returned,
                      'border-l-yellow-400 bg-yellow-50/50': task.skipState?.type === 'for_now',
@@ -234,6 +243,7 @@
                    }"
                    :style="!task.skipState ? { borderLeftColor: getTaskPrimaryTag(task)?.color || '#ccc' } : {}">
                 <div class="flex items-start justify-between gap-4">
+                  <div class="flex items-center gap-2 text-gray-400 cursor-grab" x-sort:handle>⠿</div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 class="font-medium text-gray-800" x-text="task.title"></h3>
@@ -1248,43 +1258,21 @@
           }
         },
         
+        // Safe expression evaluation using Filtrex (no eval!)
         safeEval(expression, context, funcs) {
-          let expr = expression;
-          
-          Object.keys(funcs).forEach(funcName => {
-            const regex = new RegExp(funcName + '\\s*\\(([^)]+)\\)', 'g');
-            expr = expr.replace(regex, (match, args) => {
-              const parsedArgs = args.split(',').map(a => {
-                const trimmed = a.trim();
-                if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-                  return trimmed.slice(1, -1);
-                }
-                return trimmed;
-              });
-              return funcs[funcName](...parsedArgs) ? 'true' : 'false';
-            });
-          });
-          
-          const sortedKeys = Object.keys(context).sort((a, b) => b.length - a.length);
-          sortedKeys.forEach(key => {
-            const value = context[key];
-            const regex = new RegExp('\\b' + key + '\\b', 'g');
-            if (typeof value === 'string') {
-              expr = expr.replace(regex, JSON.stringify(value));
-            } else if (typeof value === 'boolean') {
-              expr = expr.replace(regex, value ? 'true' : 'false');
-            } else {
-              expr = expr.replace(regex, String(value));
-            }
-          });
-          
-          expr = expr.replace(/\band\b/gi, '&&').replace(/\bor\b/gi, '||').replace(/\bnot\b/gi, '!');
-          
           try {
-            return Boolean(eval(expr));
+            // Normalize expression: convert 'and'/'or' to filtrex operators
+            let expr = expression
+              .replace(/\band\b/gi, ' and ')
+              .replace(/\bor\b/gi, ' or ')
+              .replace(/\bnot\b/gi, ' not ');
+
+            // Compile expression with custom functions
+            const filter = filtrex.compileExpression(expr, { extraFunctions: funcs });
+            return Boolean(filter(context));
           } catch (e) {
-            console.error('Eval error:', e, expr);
-            return true;
+            console.error('Filtrex error:', e, expression);
+            return true; // Default to true on error
           }
         },
         
@@ -1538,16 +1526,38 @@
           }
           
           return tasks.sort((a, b) => {
+            // Returned tasks bubble to top
             if (a.skipState?.type === 'for_day' && a.skipState?.returned) return -1;
             if (b.skipState?.type === 'for_day' && b.skipState?.returned) return 1;
+            // Skipped-for-day tasks go to bottom
             if (a.skipState?.type === 'for_day' && !a.skipState?.returned) return 1;
             if (b.skipState?.type === 'for_day' && !b.skipState?.returned) return -1;
+            // Skipped-for-now go after normal tasks
             if (a.skipState?.type === 'for_now' && !b.skipState) return 1;
             if (b.skipState?.type === 'for_now' && !a.skipState) return -1;
-            return 0;
+            // Otherwise sort by order
+            return (a.order || 0) - (b.order || 0);
           });
         },
-        
+
+        handleTaskReorder(itemId, newPosition) {
+          const sprintTasks = this.getSprintTasks(this.selectedSprint);
+          const taskIds = sprintTasks.map(t => t.id);
+
+          // Remove from old position and insert at new
+          const oldIndex = taskIds.indexOf(itemId);
+          if (oldIndex !== -1) {
+            taskIds.splice(oldIndex, 1);
+          }
+          taskIds.splice(newPosition, 0, itemId);
+
+          // Update order values
+          taskIds.forEach((id, index) => {
+            const task = this.tasks.find(t => t.id === id);
+            if (task) task.order = index;
+          });
+        },
+
         getSprintLabel(index) {
           if (index === 0) return '📅 Current Sprint';
           if (index === 1) return '➡️ Next Sprint';

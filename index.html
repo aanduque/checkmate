@@ -921,11 +921,17 @@
             <label class="label-text font-medium mb-2 block">Comments</label>
             <div class="space-y-2 mb-3 max-h-48 overflow-y-auto">
               <template x-for="comment in (selectedTask.comments || [])" :key="comment.id">
-                <div class="bg-base-200 rounded-lg p-3" :class="comment.skipJustification ? 'border-l-4 border-l-warning' : ''">
+                <div class="bg-base-200 rounded-lg p-3" :class="{
+                  'border-l-4 border-l-warning': comment.skipJustification,
+                  'border-l-4 border-l-error': comment.cancelJustification
+                }">
                   <div class="flex items-start justify-between">
                     <div class="flex-1">
                       <template x-if="comment.skipJustification">
                         <span class="badge badge-warning badge-sm mb-1">Skip Justification</span>
+                      </template>
+                      <template x-if="comment.cancelJustification">
+                        <span class="badge badge-error badge-sm mb-1">Cancellation Reason</span>
                       </template>
                       <p class="text-sm whitespace-pre-wrap" x-text="comment.content"></p>
                       <p class="text-xs opacity-50 mt-1" x-text="formatDate(new Date(comment.createdAt))"></p>
@@ -952,6 +958,16 @@
               </p>
             </template>
           </div>
+
+          <!-- Danger Zone -->
+          <template x-if="selectedTask.status === 'active'">
+            <div class="mt-6 pt-4 border-t border-base-300">
+              <button @click="openCancelTaskModal(selectedTask)" class="btn btn-ghost btn-sm text-error gap-1">
+                <ion-icon name="close-circle-outline"></ion-icon>
+                Cancel Task
+              </button>
+            </div>
+          </template>
         </div>
       </template>
     </div>
@@ -977,7 +993,35 @@
     </div>
     <form method="dialog" class="modal-backdrop" @click="showSkipForDayModal = false"><button>close</button></form>
   </dialog>
-  
+
+  <!-- Cancel Task Modal -->
+  <dialog class="modal" :class="{'modal-open': showCancelTaskModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCancelTaskModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-2 text-error flex items-center gap-2">
+        <ion-icon name="close-circle-outline"></ion-icon>
+        Cancel Task
+      </h3>
+      <p class="opacity-70 mb-4">This action is permanent. The task will be marked as canceled and cannot be undone.</p>
+      <template x-if="taskToCancel">
+        <div class="bg-base-200 rounded-lg p-3 mb-4">
+          <p class="font-medium" x-text="taskToCancel.title"></p>
+        </div>
+      </template>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Why are you canceling this task?</span></label>
+        <textarea x-model="cancelJustification" required rows="3" class="textarea textarea-bordered" placeholder="e.g., No longer relevant, duplicate task, requirements changed..."></textarea>
+      </div>
+      <div class="modal-action">
+        <button @click="showCancelTaskModal = false" class="btn btn-ghost">Back</button>
+        <button @click="confirmCancelTask()" :disabled="!cancelJustification.trim()" class="btn btn-error">Cancel Task</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showCancelTaskModal = false"><button>close</button></form>
+  </dialog>
+
   <!-- Complete Session Modal -->
   <dialog class="modal" :class="{'modal-open': showCompleteSessionModal}">
     <div class="modal-box">
@@ -1317,6 +1361,7 @@ Buy groceries"></textarea>
         showCreateTaskModal: false,
         showTaskDetailModal: false,
         showSkipForDayModal: false,
+        showCancelTaskModal: false,
         showCompleteSessionModal: false,
         showSprintHealthModal: false,
         showCapacityEditModal: false,
@@ -1333,6 +1378,8 @@ Buy groceries"></textarea>
         newCommentContent: '',
         skipJustification: '',
         taskToSkip: null,
+        cancelJustification: '',
+        taskToCancel: null,
         sessionFocusLevel: 'neutral',
         sessionNote: '',
         markTaskComplete: false,
@@ -2172,12 +2219,36 @@ Buy groceries"></textarea>
           this.updateTask(task);
         },
         
-        cancelTask(task) {
-          if (confirm(`Cancel task "${task.title}"?`)) {
-            task.status = 'canceled';
-            task.canceledAt = new Date().toISOString();
-            this.updateTask(task);
-          }
+        openCancelTaskModal(task) {
+          this.taskToCancel = task;
+          this.cancelJustification = '';
+          this.showCancelTaskModal = true;
+        },
+
+        confirmCancelTask() {
+          if (!this.cancelJustification.trim()) return;
+
+          const comment = {
+            id: this.generateId(),
+            content: this.cancelJustification,
+            createdAt: new Date().toISOString(),
+            updatedAt: null,
+            cancelJustification: true
+          };
+
+          // Find the actual task in the tasks array
+          const actualTask = this.tasks.find(t => t.id === this.taskToCancel.id);
+          if (!actualTask) return;
+
+          actualTask.comments = actualTask.comments || [];
+          actualTask.comments.push(comment);
+          actualTask.status = 'canceled';
+          actualTask.canceledAt = new Date().toISOString();
+
+          this.showCancelTaskModal = false;
+          this.showTaskDetailModal = false;
+          this.taskToCancel = null;
+          this.cancelJustification = '';
         },
         
         moveTaskToSprint(task, sprint) {

@@ -28,10 +28,12 @@
 
   <!-- Alpine Plugins -->
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3/dist/cdn.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/sort@3/dist/cdn.min.js"></script>
 
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+
+  <!-- SortableJS for drag-drop (used directly, not via Alpine) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
   <!-- Ionicons -->
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
@@ -50,413 +52,441 @@
     .sortable-ghost { opacity: 0.4; }
     .sortable-drag { box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
     .sortable-chosen { cursor: grabbing; }
+    /* Kanban layout */
+    .kanban-container { display: flex; gap: 1rem; overflow-x: auto; min-height: 400px; }
+    .kanban-column { flex: 1; min-width: 250px; max-width: 400px; display: flex; flex-direction: column; }
+    .kanban-column-content { flex: 1; min-height: 100px; }
+    .kanban-task { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .kanban-task:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    /* Mobile: stacked collapsible */
+    @media (max-width: 768px) {
+      .kanban-container { flex-direction: column; overflow-x: visible; min-height: auto; }
+      .kanban-column { max-width: none; min-width: auto; }
+      .kanban-column-content { min-height: 50px; }
+    }
   </style>
 </head>
-<body class="bg-base-200 min-h-screen" x-cloak x-data="checkMate()" x-init="init()">
-  
-  <div class="max-w-7xl mx-auto p-4">
-    
-    <!-- Header -->
-    <div class="navbar bg-base-100 rounded-box shadow-sm mb-6">
-      <div class="navbar-start gap-3">
-        <ion-icon name="checkbox-outline" class="text-3xl text-primary"></ion-icon>
-        <div>
-          <h1 class="text-xl font-bold">Check Mate</h1>
-          <p class="text-xs opacity-70">ADHD-Focused Task Management</p>
+<body class="bg-base-200 min-h-screen pb-20" x-cloak x-data="checkMate()" x-init="init()">
+
+  <!-- Main Drawer Layout -->
+  <div class="drawer drawer-end">
+    <input id="main-drawer" type="checkbox" class="drawer-toggle" />
+
+    <!-- Main Content -->
+    <div class="drawer-content flex flex-col">
+
+      <!-- Minimal Navbar -->
+      <div class="navbar bg-base-100 shadow-sm sticky top-0 z-10">
+        <div class="navbar-start gap-2">
+          <ion-icon name="checkbox-outline" class="text-2xl text-primary"></ion-icon>
+          <span class="font-bold text-lg">Check Mate</span>
+        </div>
+        <div class="navbar-center">
+          <template x-if="activeRoutine">
+            <div class="badge gap-1" :style="{ backgroundColor: activeRoutine.color + '20', color: activeRoutine.color }">
+              <span x-text="activeRoutine.icon"></span>
+              <span x-text="activeRoutine.name" class="hidden sm:inline"></span>
+            </div>
+          </template>
+        </div>
+        <div class="navbar-end gap-1">
+          <!-- Theme Toggle -->
+          <label class="swap swap-rotate btn btn-ghost btn-circle btn-sm">
+            <input type="checkbox" :checked="settings.theme === 'dark'" @change="settings.theme = $event.target.checked ? 'dark' : 'light'" />
+            <ion-icon name="sunny-outline" class="swap-off"></ion-icon>
+            <ion-icon name="moon-outline" class="swap-on"></ion-icon>
+          </label>
+          <!-- Drawer Toggle -->
+          <label for="main-drawer" class="btn btn-ghost btn-circle btn-sm">
+            <ion-icon name="menu-outline"></ion-icon>
+          </label>
         </div>
       </div>
 
-      <div class="navbar-end gap-2 flex-wrap">
-        <!-- Active Routine Indicator -->
-        <template x-if="activeRoutine">
-          <div class="badge badge-lg gap-1" :style="{ backgroundColor: activeRoutine.color + '20', color: activeRoutine.color, borderColor: activeRoutine.color }">
-            <span x-text="activeRoutine.icon"></span>
-            <span x-text="activeRoutine.name"></span>
-            <button @click="clearRoutineOverride()" class="ml-1 opacity-60 hover:opacity-100" title="Clear override"><ion-icon name="close-outline" class="text-sm"></ion-icon></button>
+      <!-- Page Content -->
+      <div class="flex-1 p-4 mx-auto w-full" :class="currentView === 'tasks' ? 'max-w-6xl' : 'max-w-2xl'">
+
+        <!-- Active Session Banner (shown in any view) -->
+        <template x-if="activeSession">
+          <div class="alert alert-info shadow-lg mb-4">
+            <ion-icon name="radio-button-on-outline" class="text-2xl animate-pulse"></ion-icon>
+            <div class="flex-1">
+              <p class="text-sm opacity-80">Focusing on</p>
+              <p class="font-bold" x-text="getTaskById(activeSession.taskId)?.title"></p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl font-mono font-bold" x-text="formatSessionTime(sessionElapsed)"></p>
+            </div>
+            <div class="flex gap-1">
+              <button @click="openCompleteSessionModal()" class="btn btn-success btn-sm btn-circle"><ion-icon name="checkmark-outline"></ion-icon></button>
+              <button @click="abandonSession()" class="btn btn-ghost btn-sm btn-circle"><ion-icon name="close-outline"></ion-icon></button>
+            </div>
           </div>
         </template>
 
-        <!-- Manual Routine Selector -->
-        <select x-model="manualRoutineId" class="select select-bordered select-sm">
-          <option value="">Auto Routine</option>
-          <template x-for="routine in routines" :key="routine.id">
-            <option :value="routine.id" x-text="routine.icon + ' ' + routine.name"></option>
-          </template>
-        </select>
-
-        <!-- Current Date -->
-        <div class="text-sm opacity-70" x-text="formatDate(today)"></div>
-
-        <!-- Theme Toggle -->
-        <label class="swap swap-rotate btn btn-ghost btn-circle">
-          <input type="checkbox" :checked="settings.theme === 'dark'" @change="settings.theme = $event.target.checked ? 'dark' : 'light'" />
-          <ion-icon name="sunny-outline" class="swap-off text-xl"></ion-icon>
-          <ion-icon name="moon-outline" class="swap-on text-xl"></ion-icon>
-        </label>
-
-        <!-- Action Buttons -->
-        <button @click="showTagsModal = true" class="btn btn-ghost btn-circle" title="Manage Tags"><ion-icon name="pricetag-outline"></ion-icon></button>
-        <button @click="showRoutinesModal = true" class="btn btn-ghost btn-circle" title="Manage Routines"><ion-icon name="sync-outline"></ion-icon></button>
-        <button @click="showSettingsModal = true" class="btn btn-ghost btn-circle" title="Settings"><ion-icon name="settings-outline"></ion-icon></button>
-      </div>
-    </div>
-    
-    <!-- Active Session Banner -->
-    <template x-if="activeSession">
-      <div class="alert alert-info shadow-lg mb-6">
-        <ion-icon name="radio-button-on-outline" class="text-4xl animate-pulse"></ion-icon>
-        <div>
-          <p class="text-sm opacity-80">Focusing on</p>
-          <p class="font-bold text-lg" x-text="getTaskById(activeSession.taskId)?.title"></p>
-        </div>
-        <div class="text-center">
-          <p class="text-3xl font-mono font-bold" x-text="formatSessionTime(sessionElapsed)"></p>
-          <p class="text-xs opacity-80">elapsed</p>
-        </div>
-        <div class="flex gap-2">
-          <button @click="openCompleteSessionModal()" class="btn btn-success btn-sm gap-1"><ion-icon name="checkmark-outline"></ion-icon> Complete</button>
-          <button @click="abandonSession()" class="btn btn-ghost btn-sm gap-1"><ion-icon name="close-outline"></ion-icon> Abandon</button>
-        </div>
-      </div>
-    </template>
-
-    <!-- Main Navigation Tabs -->
-    <div role="tablist" class="tabs tabs-boxed bg-base-100 mb-6 p-1">
-      <button @click="currentView = 'sprint'" role="tab" :class="{'tab-active': currentView === 'sprint'}" class="tab gap-1">
-        <ion-icon name="calendar-outline"></ion-icon> Sprints
-      </button>
-      <button @click="currentView = 'backlog'" role="tab" :class="{'tab-active': currentView === 'backlog'}" class="tab gap-1">
-        <ion-icon name="clipboard-outline"></ion-icon> Backlog <span class="badge badge-sm" x-text="backlogTasks.length"></span>
-      </button>
-      <button @click="currentView = 'recurring'" role="tab" :class="{'tab-active': currentView === 'recurring'}" class="tab gap-1">
-        <ion-icon name="repeat-outline"></ion-icon> Recurring <span class="badge badge-sm" x-text="recurringTemplates.length"></span>
-      </button>
-      <button @click="currentView = 'completed'" role="tab" :class="{'tab-active': currentView === 'completed'}" class="tab gap-1">
-        <ion-icon name="checkmark-circle-outline"></ion-icon> Completed <span class="badge badge-sm" x-text="completedTasks.length"></span>
-      </button>
-    </div>
-    
-    <!-- Tag Filter Bar -->
-    <div class="card bg-base-100 shadow-sm mb-6">
-      <div class="card-body p-4 flex-row items-center gap-4 flex-wrap">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-sm opacity-70">Filter:</span>
-          <button @click="toggleTagFilter(null)"
-                  :class="selectedTagFilters.length === 0 ? 'btn-neutral' : 'btn-ghost'"
-                  class="btn btn-xs">All</button>
-          <template x-for="tag in tags" :key="tag.id">
-            <button @click="toggleTagFilter(tag.id)"
-                    :class="selectedTagFilters.includes(tag.id) ? 'ring-2 ring-offset-1' : ''"
-                    :style="{ backgroundColor: tag.color + '20', color: tag.color, '--tw-ring-color': tag.color }"
-                    class="btn btn-xs gap-1">
-              <span x-text="tag.icon"></span>
-              <span x-text="tag.name"></span>
-            </button>
-          </template>
-        </div>
-        <div class="flex-1"></div>
-        <button @click="showCreateTaskModal = true" class="btn btn-primary btn-sm gap-1">
-          <ion-icon name="add-outline"></ion-icon> New Task
-        </button>
-      </div>
-    </div>
-    
-    <!-- ==================== SPRINT VIEW ==================== -->
-    <div x-show="currentView === 'sprint'" class="space-y-6">
-      <!-- Sprint Tabs -->
-      <div role="tablist" class="tabs tabs-boxed bg-base-100 p-1 w-fit">
-        <template x-for="(sprint, index) in sprints" :key="sprint.id">
-          <button @click="selectedSprintIndex = index" role="tab" :class="{'tab-active': selectedSprintIndex === index}" class="tab gap-2">
-            <ion-icon :name="getSprintIcon(index)"></ion-icon>
-            <span x-text="getSprintLabel(index)"></span>
-            <span class="badge badge-sm"
-                  :class="{
-                    'badge-success': getSprintHealth(sprint).overall === 'on_track',
-                    'badge-warning': getSprintHealth(sprint).overall === 'at_risk',
-                    'badge-error': getSprintHealth(sprint).overall === 'off_track'
-                  }"
-                  x-text="getSprintHealth(sprint).overall.replace('_', ' ')"></span>
-          </button>
-        </template>
-      </div>
-
-      <!-- Sprint Content -->
-      <template x-if="selectedSprint">
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body">
-            <!-- Sprint Header -->
-            <div class="flex items-start justify-between flex-wrap gap-4">
-              <div>
-                <h2 class="card-title gap-2"><ion-icon :name="getSprintIcon(selectedSprintIndex)"></ion-icon> <span x-text="getSprintLabel(selectedSprintIndex)"></span></h2>
-                <p class="text-sm opacity-70">
-                  <span x-text="formatDate(selectedSprint.startDate)"></span> -
-                  <span x-text="formatDate(selectedSprint.endDate)"></span>
-                  <span class="ml-2 font-medium">(<span x-text="getDaysRemaining(selectedSprint)"></span> days left)</span>
-                </p>
-              </div>
-              <button @click="showSprintHealthModal = true" class="btn btn-ghost btn-sm">View health details</button>
-            </div>
-          
-            <!-- Capacity Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 my-4">
-              <template x-for="tag in tags" :key="tag.id">
-                <div class="bg-base-200 rounded-lg p-3">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span x-text="tag.icon"></span>
-                    <span class="text-sm font-medium truncate" x-text="tag.name"></span>
-                  </div>
-                  <div class="flex justify-between text-xs opacity-70">
-                    <span>Used:</span>
-                    <span x-text="getSprintPointsForTag(selectedSprint, tag.id) + '/' + getCapacityForTag(selectedSprint, tag.id) + ' pts'"></span>
-                  </div>
-                  <progress class="progress mt-2"
-                       :class="{
-                         'progress-success': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) <= 0.8,
-                         'progress-warning': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) > 0.8 && getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) <= 1,
-                         'progress-error': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) > 1
-                       }"
-                       :value="getSprintPointsForTag(selectedSprint, tag.id)"
-                       :max="getCapacityForTag(selectedSprint, tag.id)"></progress>
-                  <button @click="editSprintCapacity(selectedSprint, tag)" class="btn btn-ghost btn-xs mt-1">Edit</button>
-                </div>
-              </template>
-            </div>
-
-            <!-- Sprint Tasks -->
-            <div class="space-y-3" x-sort="handleTaskReorder">
-              <template x-for="task in getSprintTasks(selectedSprint)" :key="task.id">
-                <div x-sort:item="task.id"
-                     class="card bg-base-200 border-l-4 cursor-grab active:cursor-grabbing"
-                     :class="{
-                       'opacity-60': task.skipState?.type === 'for_day' && !task.skipState?.returned,
-                       'border-l-warning bg-warning/10': task.skipState?.type === 'for_now',
-                       'border-l-info bg-info/10': task.skipState?.type === 'for_day' && task.skipState?.returned
-                     }"
-                     :style="!task.skipState ? { borderLeftColor: getTaskPrimaryTag(task)?.color || 'oklch(var(--bc)/0.2)' } : {}">
-                  <div class="card-body p-4">
-                    <div class="flex items-start justify-between gap-4">
-                      <div class="flex items-center gap-2 opacity-40 cursor-grab" x-sort:handle><ion-icon name="reorder-three-outline"></ion-icon></div>
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 class="font-medium" x-text="task.title"></h3>
-                          <template x-if="task.parentId">
-                            <span class="badge badge-secondary badge-sm gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
-                          </template>
-                          <template x-if="task.skipState?.type === 'for_now'">
-                            <span class="badge badge-warning badge-sm gap-1"><ion-icon name="play-skip-forward-outline"></ion-icon> Skipped</span>
-                          </template>
-                          <template x-if="task.skipState?.type === 'for_day' && task.skipState?.returned">
-                            <span class="badge badge-info badge-sm gap-1"><ion-icon name="arrow-undo-outline"></ion-icon> Returned!</span>
-                          </template>
-                        </div>
-                        <div class="flex flex-wrap gap-1.5 mb-2">
-                          <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
-                            <span class="badge badge-sm" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
-                              <span x-text="getTagById(tagId)?.icon"></span>
-                              <span x-text="getTagById(tagId)?.name"></span>
-                              <span class="font-bold" x-text="points + 'pt'"></span>
-                            </span>
-                          </template>
-                        </div>
-                        <div class="flex items-center gap-3 text-xs opacity-60">
-                          <span x-text="getTaskAge(task) + 'd old'"></span>
-                          <span x-text="(task.sessions?.length || 0) + ' sessions'"></span>
-                          <span x-text="(task.comments?.length || 0) + ' comments'"></span>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-1">
-                        <button @click="startSession(task)" :disabled="activeSession" class="btn btn-ghost btn-circle btn-sm text-success" title="Start Session"><ion-icon name="play-outline"></ion-icon></button>
-                        <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-sm" title="Details"><ion-icon name="create-outline"></ion-icon></button>
-                        <div class="dropdown dropdown-end">
-                          <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm"><ion-icon name="ellipsis-vertical-outline"></ion-icon></div>
-                          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow-lg">
-                            <template x-if="task.skipState">
-                              <li><a @click="clearSkipState(task)" class="gap-2"><ion-icon name="arrow-undo-outline"></ion-icon> Clear skip</a></li>
-                            </template>
-                            <li><a @click="skipTaskForNow(task)" class="gap-2"><ion-icon name="play-skip-forward-outline"></ion-icon> Skip for now</a></li>
-                            <li><a @click="openSkipForDayModal(task)" class="gap-2"><ion-icon name="calendar-outline"></ion-icon> Skip for day</a></li>
-                            <li><a @click="completeTask(task)" class="gap-2 text-success"><ion-icon name="checkmark-circle-outline"></ion-icon> Complete</a></li>
-                            <li><a @click="moveTaskToBacklog(task)" class="gap-2"><ion-icon name="clipboard-outline"></ion-icon> To Backlog</a></li>
-                            <li><a @click="cancelTask(task)" class="gap-2 text-error"><ion-icon name="trash-outline"></ion-icon> Cancel</a></li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </template>
-              <template x-if="getSprintTasks(selectedSprint).length === 0">
-                <div class="text-center py-12 opacity-60">
-                  <ion-icon name="mail-open-outline" class="text-4xl mb-2"></ion-icon>
-                  <p>No tasks in this sprint</p>
-                  <p class="text-sm">Move tasks from the backlog or create new ones</p>
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
-      </template>
-    </div>
-    
-    <!-- ==================== BACKLOG VIEW ==================== -->
-    <div x-show="currentView === 'backlog'" class="card bg-base-100 shadow-sm">
-      <div class="card-body">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="card-title">Backlog</h2>
-          <span class="badge badge-ghost" x-text="filteredBacklogTasks.length + ' tasks'"></span>
-        </div>
-        <div class="space-y-3">
-          <template x-for="task in filteredBacklogTasks" :key="task.id">
-            <div class="card bg-base-200 border-l-4" :style="{ borderLeftColor: getTaskPrimaryTag(task)?.color || 'oklch(var(--bc)/0.2)' }">
-              <div class="card-body p-4">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 class="font-medium" x-text="task.title"></h3>
-                      <template x-if="task.parentId">
-                        <span class="badge badge-secondary badge-sm gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
-                      </template>
-                    </div>
-                    <template x-if="task.description">
-                      <p class="text-sm opacity-70 mb-2 line-clamp-2" x-text="task.description"></p>
+        <!-- ==================== FOCUS VIEW ==================== -->
+        <div x-show="currentView === 'focus'" class="space-y-4">
+          <!-- Hero: Focus on ONE task -->
+          <template x-if="focusTask">
+            <div class="hero bg-base-100 rounded-box shadow-sm py-8">
+              <div class="hero-content text-center flex-col">
+                <div class="max-w-md">
+                  <p class="text-sm opacity-60 mb-2">Focus on this now</p>
+                  <h1 class="text-2xl font-bold mb-4" x-text="focusTask.title"></h1>
+                  <div class="flex flex-wrap justify-center gap-2 mb-6">
+                    <template x-for="(points, tagId) in focusTask.tagPoints" :key="tagId">
+                      <span class="badge badge-lg" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                        <span x-text="getTagById(tagId)?.icon" class="mr-1"></span>
+                        <span x-text="getTagById(tagId)?.name"></span>
+                      </span>
                     </template>
-                    <div class="flex flex-wrap gap-1.5 mb-2">
-                      <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
-                        <span class="badge badge-sm" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
-                          <span x-text="getTagById(tagId)?.icon"></span>
-                          <span x-text="getTagById(tagId)?.name"></span>
-                          <span class="font-bold" x-text="points + 'pt'"></span>
-                        </span>
-                      </template>
-                    </div>
-                    <div class="flex items-center gap-3 text-xs opacity-60">
-                      <span x-text="getTaskAge(task) + 'd old'"></span>
-                      <span x-text="'In ' + (task.sprintHistory?.length || 0) + ' sprints'"></span>
-                    </div>
                   </div>
-                  <div class="flex items-center gap-1">
-                    <div class="dropdown dropdown-end">
-                      <div tabindex="0" role="button" class="btn btn-primary btn-sm gap-1">Move <ion-icon name="chevron-down-outline"></ion-icon></div>
-                      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow-lg">
-                        <template x-for="(sprint, index) in sprints" :key="sprint.id">
-                          <li><a @click="moveTaskToSprint(task, sprint)" class="gap-2"><ion-icon :name="getSprintIcon(index)"></ion-icon> <span x-text="getSprintLabel(index)"></span></a></li>
-                        </template>
-                      </ul>
-                    </div>
-                    <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-sm" title="Details"><ion-icon name="create-outline"></ion-icon></button>
-                    <button @click="cancelTask(task)" class="btn btn-ghost btn-circle btn-sm text-error" title="Cancel"><ion-icon name="trash-outline"></ion-icon></button>
+                  <div class="flex justify-center gap-2">
+                    <button @click="startSession(focusTask)" :disabled="activeSession" class="btn btn-primary btn-lg gap-2">
+                      <ion-icon name="play-outline"></ion-icon> Start Focus
+                    </button>
+                    <button @click="completeTask(focusTask)" class="btn btn-success btn-lg gap-2">
+                      <ion-icon name="checkmark-outline"></ion-icon> Done
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           </template>
-          <template x-if="filteredBacklogTasks.length === 0">
-            <div class="text-center py-12 opacity-60">
-              <ion-icon name="trophy-outline" class="text-4xl mb-2"></ion-icon>
-              <p>Backlog is empty!</p>
-              <p class="text-sm">Create new tasks or check your filters</p>
+
+          <!-- No focus task -->
+          <template x-if="!focusTask">
+            <div class="hero bg-base-100 rounded-box shadow-sm py-12">
+              <div class="hero-content text-center">
+                <div class="max-w-md">
+                  <ion-icon name="checkmark-circle-outline" class="text-6xl text-success mb-4"></ion-icon>
+                  <h1 class="text-2xl font-bold mb-2">All Clear!</h1>
+                  <p class="opacity-70 mb-4">No tasks in your current sprint. Add some tasks to get started.</p>
+                  <button @click="showCreateTaskModal = true" class="btn btn-primary gap-2">
+                    <ion-icon name="add-outline"></ion-icon> Add Task
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Quick actions for focus task -->
+          <template x-if="focusTask">
+            <div class="flex justify-center gap-2">
+              <button @click="skipTaskForNow(focusTask)" class="btn btn-ghost btn-sm gap-1">
+                <ion-icon name="play-skip-forward-outline"></ion-icon> Skip for now
+              </button>
+              <button @click="openSkipForDayModal(focusTask)" class="btn btn-ghost btn-sm gap-1">
+                <ion-icon name="calendar-outline"></ion-icon> Skip for day
+              </button>
+              <button @click="openTaskDetail(focusTask)" class="btn btn-ghost btn-sm gap-1">
+                <ion-icon name="create-outline"></ion-icon> Details
+              </button>
+            </div>
+          </template>
+
+          <!-- Up next preview -->
+          <template x-if="upNextTasks.length > 0">
+            <div class="mt-6">
+              <p class="text-sm opacity-60 mb-2 text-center">Up next</p>
+              <div class="space-y-2">
+                <template x-for="task in upNextTasks.slice(0, 3)" :key="task.id">
+                  <div class="card bg-base-100 shadow-sm">
+                    <div class="card-body p-3 flex-row items-center gap-3">
+                      <div class="w-1 h-8 rounded-full" :style="{ backgroundColor: getTaskPrimaryTag(task)?.color }"></div>
+                      <span class="flex-1 font-medium truncate" x-text="task.title"></span>
+                      <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs">
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
             </div>
           </template>
         </div>
-      </div>
-    </div>
 
-    <!-- ==================== RECURRING VIEW ==================== -->
-    <div x-show="currentView === 'recurring'" class="card bg-base-100 shadow-sm">
-      <div class="card-body">
-        <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
-          <div>
-            <h2 class="card-title">Recurring Templates</h2>
-            <p class="text-sm opacity-70">Templates spawn task instances based on their schedule</p>
+        <!-- ==================== TASKS VIEW (Kanban Board) ==================== -->
+        <div x-show="currentView === 'tasks'" x-init="$nextTick(() => initKanban())">
+
+          <!-- Desktop: Kanban columns | Mobile: Collapsible sections -->
+          <div class="kanban-container">
+
+            <!-- Backlog Column -->
+            <div class="kanban-column">
+              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
+                <input type="checkbox" class="md:hidden" />
+                <div class="collapse-title font-medium flex items-center gap-2 py-3">
+                  <ion-icon name="file-tray-stacked-outline" class="text-accent"></ion-icon>
+                  <span>Backlog</span>
+                  <span class="badge badge-sm badge-accent" x-text="backlogTasks.length"></span>
+                </div>
+                <div class="collapse-content p-0">
+                  <div id="kanban-backlog" data-column="backlog" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
+                    <template x-for="task in backlogTasks" :key="task.id">
+                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm">
+                        <div class="flex items-start gap-2">
+                          <div class="w-1 h-full min-h-[2rem] rounded-full flex-shrink-0" :style="{ backgroundColor: getTaskPrimaryTag(task)?.color || '#888' }"></div>
+                          <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                            <div class="flex items-center gap-1 mt-1 flex-wrap">
+                              <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                                <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                  <span x-text="points"></span>
+                                </span>
+                              </template>
+                            </div>
+                          </div>
+                          <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs flex-shrink-0">
+                            <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                          </button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- This Week (Sprint 0) -->
+            <div class="kanban-column">
+              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
+                <input type="checkbox" class="md:hidden" checked />
+                <div class="collapse-title font-medium flex items-center gap-2 py-3">
+                  <ion-icon name="calendar-outline" class="text-primary"></ion-icon>
+                  <span>This Week</span>
+                  <span class="badge badge-sm badge-primary" x-text="getKanbanSprintTasks(0).length"></span>
+                  <span class="badge badge-xs ml-auto"
+                        :class="{
+                          'badge-success': sprints[0] && getSprintHealth(sprints[0]).overall === 'on_track',
+                          'badge-warning': sprints[0] && getSprintHealth(sprints[0]).overall === 'at_risk',
+                          'badge-error': sprints[0] && getSprintHealth(sprints[0]).overall === 'off_track'
+                        }"
+                        x-text="sprints[0] ? getDaysRemaining(sprints[0]) + 'd' : ''"></span>
+                </div>
+                <div class="collapse-content p-0">
+                  <div id="kanban-sprint-0" x-bind:data-column="sprints[0]?.id" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
+                    <template x-for="task in getKanbanSprintTasks(0)" :key="task.id">
+                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm" :class="{ 'opacity-50': task.skipState }">
+                        <div class="flex items-start gap-2">
+                          <button @click.stop="completeTask(task)" class="btn btn-ghost btn-circle btn-xs flex-shrink-0 mt-0.5">
+                            <ion-icon name="ellipse-outline" class="text-base"></ion-icon>
+                          </button>
+                          <div class="w-1 h-full min-h-[2rem] rounded-full flex-shrink-0" :style="{ backgroundColor: getTaskPrimaryTag(task)?.color || '#888' }"></div>
+                          <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                            <div class="flex items-center gap-1 mt-1 flex-wrap">
+                              <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                                <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                  <span x-text="points"></span>
+                                </span>
+                              </template>
+                              <span x-show="task.skipState" class="badge badge-xs badge-warning">skipped</span>
+                            </div>
+                          </div>
+                          <div class="flex flex-col gap-1 flex-shrink-0">
+                            <button @click.stop="startSession(task)" :disabled="activeSession" class="btn btn-ghost btn-circle btn-xs text-success">
+                              <ion-icon name="play-outline"></ion-icon>
+                            </button>
+                            <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs">
+                              <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Next Week (Sprint 1) -->
+            <div class="kanban-column">
+              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
+                <input type="checkbox" class="md:hidden" />
+                <div class="collapse-title font-medium flex items-center gap-2 py-3">
+                  <ion-icon name="arrow-forward-outline" class="text-secondary"></ion-icon>
+                  <span>Next Week</span>
+                  <span class="badge badge-sm badge-secondary" x-text="getKanbanSprintTasks(1).length"></span>
+                </div>
+                <div class="collapse-content p-0">
+                  <div id="kanban-sprint-1" x-bind:data-column="sprints[1]?.id" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
+                    <template x-for="task in getKanbanSprintTasks(1)" :key="task.id">
+                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm">
+                        <div class="flex items-start gap-2">
+                          <div class="w-1 h-full min-h-[2rem] rounded-full flex-shrink-0" :style="{ backgroundColor: getTaskPrimaryTag(task)?.color || '#888' }"></div>
+                          <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                            <div class="flex items-center gap-1 mt-1 flex-wrap">
+                              <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                                <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                  <span x-text="points"></span>
+                                </span>
+                              </template>
+                            </div>
+                          </div>
+                          <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs flex-shrink-0">
+                            <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                          </button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Week After (Sprint 2) -->
+            <div class="kanban-column">
+              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
+                <input type="checkbox" class="md:hidden" />
+                <div class="collapse-title font-medium flex items-center gap-2 py-3">
+                  <ion-icon name="play-skip-forward-outline" class="text-info"></ion-icon>
+                  <span>Week After</span>
+                  <span class="badge badge-sm badge-info" x-text="getKanbanSprintTasks(2).length"></span>
+                </div>
+                <div class="collapse-content p-0">
+                  <div id="kanban-sprint-2" x-bind:data-column="sprints[2]?.id" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
+                    <template x-for="task in getKanbanSprintTasks(2)" :key="task.id">
+                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm">
+                        <div class="flex items-start gap-2">
+                          <div class="w-1 h-full min-h-[2rem] rounded-full flex-shrink-0" :style="{ backgroundColor: getTaskPrimaryTag(task)?.color || '#888' }"></div>
+                          <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                            <div class="flex items-center gap-1 mt-1 flex-wrap">
+                              <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                                <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                  <span x-text="points"></span>
+                                </span>
+                              </template>
+                            </div>
+                          </div>
+                          <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs flex-shrink-0">
+                            <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                          </button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
-          <button @click="showCreateTaskModal = true" class="btn btn-secondary btn-sm gap-1">
-            <ion-icon name="add-outline"></ion-icon> New Recurring
-          </button>
-        <div class="space-y-3">
-          <template x-for="template in recurringTemplates" :key="template.id">
-            <div class="card bg-base-200 border-l-4 border-l-secondary">
-              <div class="card-body p-4">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                      <ion-icon name="repeat-outline" class="text-lg text-secondary"></ion-icon>
-                      <h3 class="font-medium" x-text="template.title"></h3>
-                    </div>
-                    <p class="text-sm text-secondary mb-2" x-text="describeRRule(template.recurrence)"></p>
-                    <div class="flex flex-wrap gap-1.5 mb-2">
-                      <template x-for="(points, tagId) in template.tagPoints" :key="tagId">
-                        <span class="badge badge-sm" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
-                          <span x-text="getTagById(tagId)?.icon"></span>
-                          <span x-text="getTagById(tagId)?.name"></span>
-                          <span class="font-bold" x-text="points + 'pt'"></span>
-                        </span>
-                      </template>
-                    </div>
-                    <div class="text-xs opacity-60">
-                      Next: <span x-text="formatDate(getNextOccurrence(template))"></span>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <button @click="spawnRecurringInstance(template)" class="btn btn-secondary btn-sm">Spawn Now</button>
-                    <button @click="openTaskDetail(template)" class="btn btn-ghost btn-circle btn-sm"><ion-icon name="create-outline"></ion-icon></button>
-                    <button @click="cancelTask(template)" class="btn btn-ghost btn-circle btn-sm text-error"><ion-icon name="trash-outline"></ion-icon></button>
-                  </div>
-                </div>
-              </div>
+        </div>
+
+      </div>
+      <!-- End Page Content -->
+
+    </div>
+    <!-- End drawer-content -->
+
+    <!-- Drawer Sidebar -->
+    <div class="drawer-side z-20">
+      <label for="main-drawer" class="drawer-overlay"></label>
+      <div class="menu bg-base-100 min-h-full w-72 p-4">
+        <div class="mb-4">
+          <h2 class="font-bold text-lg mb-1">Menu</h2>
+          <p class="text-sm opacity-60">Settings & more</p>
+        </div>
+
+        <!-- Routines Section -->
+        <div class="mb-4">
+          <p class="text-xs font-medium opacity-50 uppercase mb-2">Active Routine</p>
+          <template x-if="activeRoutine">
+            <div class="flex items-center gap-2 p-2 rounded-lg" :style="{ backgroundColor: activeRoutine.color + '15' }">
+              <span x-text="activeRoutine.icon"></span>
+              <span class="font-medium" x-text="activeRoutine.name" :style="{ color: activeRoutine.color }"></span>
+              <button @click="clearRoutineOverride()" class="btn btn-ghost btn-xs ml-auto" x-show="manualRoutineId">Clear</button>
             </div>
           </template>
-          <template x-if="recurringTemplates.length === 0">
-            <div class="text-center py-12 opacity-60">
-              <ion-icon name="repeat-outline" class="text-4xl mb-2"></ion-icon>
-              <p>No recurring templates</p>
-              <p class="text-sm">Create recurring tasks for regular activities</p>
+          <template x-if="!activeRoutine">
+            <p class="text-sm opacity-50">No active routine</p>
+          </template>
+        </div>
+
+        <div class="divider my-2"></div>
+
+        <!-- Quick Links -->
+        <ul class="menu menu-sm">
+          <li><a @click="showTagsModal = true; document.getElementById('main-drawer').checked = false" class="gap-2"><ion-icon name="pricetags-outline"></ion-icon> Manage Tags</a></li>
+          <li><a @click="showRoutinesModal = true; document.getElementById('main-drawer').checked = false" class="gap-2"><ion-icon name="time-outline"></ion-icon> Manage Routines</a></li>
+          <li><a @click="showSettingsModal = true; document.getElementById('main-drawer').checked = false" class="gap-2"><ion-icon name="settings-outline"></ion-icon> Settings</a></li>
+        </ul>
+
+        <div class="divider my-2"></div>
+
+        <!-- Recurring Templates -->
+        <div class="mb-4">
+          <p class="text-xs font-medium opacity-50 uppercase mb-2">Recurring Tasks</p>
+          <div class="space-y-1 max-h-32 overflow-y-auto">
+            <template x-for="template in recurringTemplates.slice(0, 5)" :key="template.id">
+              <div class="flex items-center gap-2 p-1 text-sm">
+                <ion-icon name="repeat-outline" class="text-secondary"></ion-icon>
+                <span class="truncate flex-1" x-text="template.title"></span>
+              </div>
+            </template>
+            <template x-if="recurringTemplates.length === 0">
+              <p class="text-sm opacity-50">No recurring tasks</p>
+            </template>
+          </div>
+        </div>
+
+        <!-- Completed Summary -->
+        <div class="mb-4">
+          <p class="text-xs font-medium opacity-50 uppercase mb-2">Recently Completed</p>
+          <div class="space-y-1 max-h-32 overflow-y-auto">
+            <template x-for="task in completedTasks.slice(0, 5)" :key="task.id">
+              <div class="flex items-center gap-2 p-1 text-sm opacity-60">
+                <ion-icon name="checkmark-circle-outline" class="text-success"></ion-icon>
+                <span class="truncate flex-1 line-through" x-text="task.title"></span>
+              </div>
+            </template>
+            <template x-if="completedTasks.length === 0">
+              <p class="text-sm opacity-50">No completed tasks</p>
+            </template>
+          </div>
+        </div>
+
+        <!-- Sprint Health (compact) -->
+        <div class="mt-auto pt-4">
+          <p class="text-xs font-medium opacity-50 uppercase mb-2">Sprint Health</p>
+          <template x-if="selectedSprint">
+            <div class="flex items-center gap-2">
+              <span class="badge"
+                    :class="{
+                      'badge-success': getSprintHealth(selectedSprint).overall === 'on_track',
+                      'badge-warning': getSprintHealth(selectedSprint).overall === 'at_risk',
+                      'badge-error': getSprintHealth(selectedSprint).overall === 'off_track'
+                    }"
+                    x-text="getSprintHealth(selectedSprint).overall.replace('_', ' ')"></span>
+              <span class="text-sm opacity-60" x-text="getDaysRemaining(selectedSprint) + ' days left'"></span>
             </div>
           </template>
         </div>
       </div>
     </div>
+  </div>
+  <!-- End Drawer -->
 
-    <!-- ==================== COMPLETED VIEW ==================== -->
-    <div x-show="currentView === 'completed'" class="card bg-base-100 shadow-sm">
-      <div class="card-body">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="card-title">Completed & Canceled</h2>
-          <span class="badge badge-ghost" x-text="completedTasks.length + ' tasks'"></span>
-        </div>
-        <div class="space-y-3">
-          <template x-for="task in completedTasks" :key="task.id">
-            <div class="card bg-base-200 border-l-4" :class="task.status === 'completed' ? 'border-l-success' : 'border-l-error'">
-              <div class="card-body p-4">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                      <ion-icon :name="task.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'" :class="task.status === 'completed' ? 'text-success' : 'text-error'"></ion-icon>
-                      <h3 class="font-medium opacity-50 line-through" x-text="task.title"></h3>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5">
-                      <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
-                        <span class="badge badge-sm opacity-60" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
-                          <span x-text="getTagById(tagId)?.icon"></span>
-                          <span class="font-bold" x-text="points + 'pt'"></span>
-                        </span>
-                      </template>
-                    </div>
-                  </div>
-                  <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-sm"><ion-icon name="create-outline"></ion-icon></button>
-                </div>
-              </div>
-            </div>
-          </template>
-          <template x-if="completedTasks.length === 0">
-            <div class="text-center py-12 opacity-60">
-              <ion-icon name="hourglass-outline" class="text-4xl mb-2"></ion-icon>
-              <p>No completed tasks yet</p>
-            </div>
-          </template>
-        </div>
-      </div>
-    </div>
-
+  <!-- Bottom Dock Navigation -->
+  <div class="dock dock-sm bg-base-100 border-t border-base-300">
+    <button @click="currentView = 'focus'" :class="{ 'dock-active': currentView === 'focus' }" class="dock-item">
+      <ion-icon name="flash-outline" class="text-xl"></ion-icon>
+      <span class="dock-label">Focus</span>
+    </button>
+    <button @click="currentView = 'tasks'" :class="{ 'dock-active': currentView === 'tasks' }" class="dock-item">
+      <ion-icon name="list-outline" class="text-xl"></ion-icon>
+      <span class="dock-label">Tasks</span>
+    </button>
+    <button @click="showCreateTaskModal = true" class="dock-item">
+      <ion-icon name="add-circle-outline" class="text-2xl text-primary"></ion-icon>
+      <span class="dock-label">Add</span>
+    </button>
+    <label for="main-drawer" class="dock-item">
+      <ion-icon name="ellipsis-horizontal-outline" class="text-xl"></ion-icon>
+      <span class="dock-label">More</span>
+    </label>
   </div>
   
   <!-- ==================== MODALS ==================== -->
@@ -931,7 +961,7 @@
         settings: Alpine.$persist({ defaultSessionDuration: 25, theme: 'light' }).as('checkmate_settings'),
         
         // === UI STATE ===
-        currentView: 'sprint',
+        currentView: 'focus',
         selectedSprintIndex: 0,
         selectedTagFilters: [],
         manualRoutineId: '',
@@ -1016,7 +1046,63 @@
           });
           return matching[0];
         },
-        
+
+        // Tasks in current sprint (today's focus)
+        get todayTasks() {
+          const sprint = this.sprints[0]; // Current sprint
+          if (!sprint) return [];
+          return this.tasks.filter(t =>
+            t.location.type === 'sprint' &&
+            t.location.sprintId === sprint.id &&
+            t.status === 'active' &&
+            !t.recurrence
+          ).sort((a, b) => {
+            // Returned tasks bubble to top
+            if (a.skipState?.type === 'for_day' && a.skipState?.returned) return -1;
+            if (b.skipState?.type === 'for_day' && b.skipState?.returned) return 1;
+            // Skipped tasks go to bottom
+            if (a.skipState && !b.skipState) return 1;
+            if (b.skipState && !a.skipState) return -1;
+            return (a.order || 0) - (b.order || 0);
+          });
+        },
+
+        // Tasks in next sprint (this week) - kept for compatibility
+        get thisWeekTasks() {
+          const sprint = this.sprints[1]; // Next sprint
+          if (!sprint) return [];
+          return this.tasks.filter(t =>
+            t.location.type === 'sprint' &&
+            t.location.sprintId === sprint.id &&
+            t.status === 'active' &&
+            !t.recurrence
+          );
+        },
+
+        // Get tasks for a specific sprint by index (for Kanban)
+        getKanbanSprintTasks(sprintIndex) {
+          const sprint = this.sprints[sprintIndex];
+          if (!sprint) return [];
+          return this.tasks.filter(t =>
+            t.location.type === 'sprint' &&
+            t.location.sprintId === sprint.id &&
+            t.status === 'active' &&
+            !t.recurrence
+          ).sort((a, b) => (a.order || 0) - (b.order || 0));
+        },
+
+        // The #1 priority task to focus on
+        get focusTask() {
+          const tasks = this.todayTasks.filter(t => !t.skipState || (t.skipState?.type === 'for_day' && t.skipState?.returned));
+          return tasks[0] || null;
+        },
+
+        // Tasks after the focus task
+        get upNextTasks() {
+          const tasks = this.todayTasks.filter(t => !t.skipState || (t.skipState?.type === 'for_day' && t.skipState?.returned));
+          return tasks.slice(1);
+        },
+
         // === LIFECYCLE ===
         init() {
           this.initializeDefaults();
@@ -1027,6 +1113,79 @@
           }, 60000);
           this.checkSkipReturns();
           console.log('Check Mate initialized');
+        },
+
+        // Initialize Kanban drag-and-drop with SortableJS
+        kanbanInstances: [],
+        initKanban() {
+          // Destroy existing instances
+          this.kanbanInstances.forEach(instance => instance.destroy());
+          this.kanbanInstances = [];
+
+          const self = this;
+          const columnIds = ['kanban-backlog', 'kanban-sprint-0', 'kanban-sprint-1', 'kanban-sprint-2'];
+
+          columnIds.forEach(columnId => {
+            const el = document.getElementById(columnId);
+            if (!el) return;
+
+            const sortable = new Sortable(el, {
+              group: 'kanban-tasks',
+              animation: 150,
+              ghostClass: 'sortable-ghost',
+              chosenClass: 'sortable-chosen',
+              dragClass: 'sortable-drag',
+              handle: '.kanban-task', // Entire card is draggable
+              draggable: '.kanban-task',
+              // Disable fallback mode which causes clone issues
+              forceFallback: false,
+
+              onEnd: function(evt) {
+                const taskId = evt.item.dataset.id;
+                if (!taskId) {
+                  console.warn('No task ID found on dragged item');
+                  return;
+                }
+
+                const task = self.tasks.find(t => t.id === taskId);
+                if (!task) {
+                  console.warn('Task not found:', taskId);
+                  return;
+                }
+
+                const toColumn = evt.to.dataset.column;
+                const newIndex = evt.newIndex;
+
+                console.log('Kanban move:', taskId, 'to', toColumn, 'at index', newIndex);
+
+                // Update task location
+                if (toColumn === 'backlog') {
+                  task.location = { type: 'backlog' };
+                  task.skipState = null;
+                } else {
+                  // toColumn is a sprint ID
+                  task.location = { type: 'sprint', sprintId: toColumn };
+                  task.skipState = null;
+                }
+
+                // Update order within the column
+                const columnEl = evt.to;
+                const taskElements = columnEl.querySelectorAll('.kanban-task[data-id]');
+                taskElements.forEach((el, idx) => {
+                  const id = el.dataset.id;
+                  const t = self.tasks.find(task => task.id === id);
+                  if (t) t.order = idx;
+                });
+
+                // Trigger Alpine reactivity
+                self.tasks = [...self.tasks];
+              }
+            });
+
+            self.kanbanInstances.push(sortable);
+          });
+
+          console.log('Kanban initialized with', this.kanbanInstances.length, 'columns');
         },
         
         initializeDefaults() {
@@ -1497,6 +1656,40 @@
 
           // Update order values
           taskIds.forEach((id, index) => {
+            const task = this.tasks.find(t => t.id === id);
+            if (task) task.order = index;
+          });
+        },
+
+        handleTodayReorder(itemId, newPosition) {
+          const taskIds = this.todayTasks.map(t => t.id);
+
+          // Remove from old position and insert at new
+          const oldIndex = taskIds.indexOf(itemId);
+          if (oldIndex !== -1) {
+            taskIds.splice(oldIndex, 1);
+          }
+          taskIds.splice(newPosition, 0, itemId);
+
+          // Update order values
+          taskIds.forEach((id, index) => {
+            const task = this.tasks.find(t => t.id === id);
+            if (task) task.order = index;
+          });
+        },
+
+        handleTodayReorderByDataId(item, newPosition, sortContainer) {
+          // Since we don't use x-sort:item, read the new order directly from the DOM
+          const container = document.querySelector('[x-sort="handleTodayReorderByDataId"]');
+          if (!container) return;
+
+          const items = container.querySelectorAll('[data-id]');
+          const newOrder = Array.from(items).map(el => el.dataset.id);
+
+          console.log('New DOM order:', newOrder);
+
+          // Update order values on actual tasks
+          newOrder.forEach((id, index) => {
             const task = this.tasks.find(t => t.id === id);
             if (task) task.order = index;
           });

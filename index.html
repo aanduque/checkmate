@@ -1201,11 +1201,23 @@
         <li><code>every day/week/month</code> - Make recurring</li>
       </ul>
 
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text text-sm">Default tag (when no #tag specified)</span>
+        </label>
+        <select x-model="importDefaultTagId" class="select select-bordered select-sm">
+          <option value="">No default tag</option>
+          <template x-for="tag in tags" :key="tag.id">
+            <option :value="tag.id" x-text="tag.name"></option>
+          </template>
+        </select>
+      </div>
+
       <textarea x-model="importText"
                 class="textarea textarea-bordered w-full h-40 font-mono text-sm"
                 placeholder="- [ ] Review report #work
 - [ ] Morning workout #health every day
-Buy groceries #personal"></textarea>
+Buy groceries"></textarea>
 
       <template x-if="importText.trim()">
         <div class="mt-3 p-3 bg-base-200 rounded-lg">
@@ -1217,6 +1229,9 @@ Buy groceries #personal"></textarea>
                 <span x-text="task.title"></span>
                 <template x-for="tag in task.tags" :key="tag.id">
                   <span class="badge badge-xs" :style="{ backgroundColor: tag.color + '20', color: tag.color }" x-text="tag.name"></span>
+                </template>
+                <template x-if="task.tags.length === 0 && importDefaultTagId">
+                  <span class="badge badge-xs" :style="{ backgroundColor: getTagById(importDefaultTagId)?.color + '20', color: getTagById(importDefaultTagId)?.color }" x-text="getTagById(importDefaultTagId)?.name"></span>
                 </template>
                 <span x-show="task.recurrence" class="badge badge-xs badge-secondary">recurring</span>
               </div>
@@ -1276,6 +1291,7 @@ Buy groceries #personal"></textarea>
 
         // === FORM STATE ===
         importText: '',
+        importDefaultTagId: '',
         newTask: { title: '', description: '', tagPoints: {} },
         selectedTask: null,
         newCommentContent: '',
@@ -1573,6 +1589,9 @@ Buy groceries #personal"></textarea>
               item.tags.forEach(tag => {
                 tagPoints[tag.id] = 1; // Default to 1 point per tag
               });
+            } else if (this.importDefaultTagId) {
+              // Use selected default tag
+              tagPoints[this.importDefaultTagId] = 1;
             } else {
               tagPoints['untagged'] = 1;
             }
@@ -1595,6 +1614,7 @@ Buy groceries #personal"></textarea>
           });
 
           this.importText = '';
+          this.importDefaultTagId = '';
           console.log(`Imported ${parsed.length} tasks to backlog`);
         },
 

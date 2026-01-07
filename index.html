@@ -95,7 +95,7 @@
 <body class="bg-gray-50 min-h-screen">
 
   <!-- Main Application Container -->
-  <div x-data="checkMate()" x-init="init()" x-cloak class="min-h-screen flex flex-col">
+  <div x-data="checkMate" x-cloak class="min-h-screen flex flex-col">
 
     <!-- Active Session Banner -->
     <div x-show="activeSession" class="bg-primary-600 text-white px-4 py-3 flex items-center justify-between">
@@ -1342,8 +1342,8 @@
     // MAIN ALPINE.JS APPLICATION
     // ============================================
 
-    function checkMate() {
-      return {
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('checkMate', () => ({
         // Persisted state
         tasks: Alpine.$persist([]).as('checkmate_tasks'),
         tags: Alpine.$persist([]).as('checkmate_tags'),
@@ -2798,8 +2798,8 @@
             task.order = position;
           }
         }
-      };
-    }
+      }));
+    });
   </script>
 
 </body>

@@ -1308,9 +1308,9 @@ Buy groceries #personal"></textarea>
           const lines = text.split('\n').filter(l => l.trim());
           return lines.map(line => {
             // Remove markdown prefixes: - [ ], - [x], -, *
-            let title = line
-              .replace(/^[-*]\s*\[[ x]?\]\s*/i, '')  // - [ ] or - [x]
-              .replace(/^[-*]\s*/, '')               // - or *
+            let title = line.trim()
+              .replace(/^[-*]\s*\[[ x]?\]\s*/, '')  // - [ ] or - [x] or * [ ]
+              .replace(/^[-*]\s+/, '')              // - or * followed by space
               .trim();
 
             if (!title) return null;

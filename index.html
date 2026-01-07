@@ -954,7 +954,7 @@
         settings: Alpine.$persist({ defaultSessionDuration: 25, theme: 'light' }).as('checkmate_settings'),
         
         // === UI STATE ===
-        currentView: 'focus',
+        currentView: Alpine.$persist('focus').as('checkmate_currentView'),
         selectedSprintIndex: 0,
         selectedTagFilters: [],
         manualRoutineId: '',

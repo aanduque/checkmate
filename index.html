@@ -886,9 +886,14 @@
           <div class="mb-6">
             <div class="flex items-center justify-between mb-2">
               <label class="label-text font-medium">Focus Sessions</label>
-              <button @click="startSession(selectedTask); showTaskDetailModal = false"
-                      :disabled="activeSession || selectedTask.status !== 'active'"
-                      class="btn btn-ghost btn-xs text-primary">+ Start Session</button>
+              <div class="flex gap-1">
+                <button @click="openAddManualSessionModal(selectedTask)"
+                        :disabled="selectedTask.status !== 'active'"
+                        class="btn btn-ghost btn-xs">+ Add Manual</button>
+                <button @click="startSession(selectedTask); showTaskDetailModal = false"
+                        :disabled="activeSession || selectedTask.status !== 'active'"
+                        class="btn btn-ghost btn-xs text-primary">+ Start Session</button>
+              </div>
             </div>
             <div class="space-y-2 max-h-40 overflow-y-auto">
               <template x-for="session in (selectedTask.sessions || []).slice().reverse()" :key="session.id">
@@ -1063,7 +1068,61 @@
     </div>
     <form method="dialog" class="modal-backdrop" @click="showCompleteSessionModal = false"><button>close</button></form>
   </dialog>
-  
+
+  <!-- Add Manual Session Modal -->
+  <dialog class="modal" :class="{'modal-open': showAddManualSessionModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showAddManualSessionModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+        <ion-icon name="time-outline"></ion-icon>
+        Add Manual Session
+      </h3>
+      <template x-if="manualSessionTask">
+        <div class="bg-base-200 rounded-lg p-3 mb-4">
+          <p class="font-medium" x-text="manualSessionTask.title"></p>
+        </div>
+      </template>
+      <div class="space-y-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Duration (minutes)</span></label>
+          <input type="number" x-model.number="manualSessionDuration" min="1" max="480" class="input input-bordered" placeholder="25">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Date</span></label>
+          <input type="date" x-model="manualSessionDate" class="input input-bordered">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">How focused were you?</span></label>
+          <div class="flex gap-2">
+            <button type="button" @click="manualSessionFocusLevel = 'distracted'"
+                    class="btn btn-sm flex-1" :class="manualSessionFocusLevel === 'distracted' ? 'btn-error' : 'btn-ghost bg-error/10 text-error'">
+              <ion-icon name="sad-outline"></ion-icon> Distracted
+            </button>
+            <button type="button" @click="manualSessionFocusLevel = 'neutral'"
+                    class="btn btn-sm flex-1" :class="manualSessionFocusLevel === 'neutral' ? 'btn-warning' : 'btn-ghost bg-warning/10 text-warning'">
+              <ion-icon name="ellipse-outline"></ion-icon> Neutral
+            </button>
+            <button type="button" @click="manualSessionFocusLevel = 'focused'"
+                    class="btn btn-sm flex-1" :class="manualSessionFocusLevel === 'focused' ? 'btn-success' : 'btn-ghost bg-success/10 text-success'">
+              <ion-icon name="happy-outline"></ion-icon> Focused
+            </button>
+          </div>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Note (optional)</span></label>
+          <textarea x-model="manualSessionNote" rows="2" class="textarea textarea-bordered" placeholder="What did you work on?"></textarea>
+        </div>
+      </div>
+      <div class="modal-action">
+        <button @click="showAddManualSessionModal = false" class="btn btn-ghost">Cancel</button>
+        <button @click="addManualSession()" :disabled="!manualSessionDuration || manualSessionDuration < 1" class="btn btn-primary">Add Session</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showAddManualSessionModal = false"><button>close</button></form>
+  </dialog>
+
   <!-- Sprint Health Modal -->
   <dialog class="modal" :class="{'modal-open': showSprintHealthModal}">
     <div class="modal-box max-w-lg">
@@ -1363,6 +1422,7 @@ Buy groceries"></textarea>
         showSkipForDayModal: false,
         showCancelTaskModal: false,
         showCompleteSessionModal: false,
+        showAddManualSessionModal: false,
         showSprintHealthModal: false,
         showCapacityEditModal: false,
         showTagsModal: false,
@@ -1380,6 +1440,11 @@ Buy groceries"></textarea>
         taskToSkip: null,
         cancelJustification: '',
         taskToCancel: null,
+        manualSessionTask: null,
+        manualSessionDuration: 25,
+        manualSessionDate: '',
+        manualSessionFocusLevel: 'neutral',
+        manualSessionNote: '',
         sessionFocusLevel: 'neutral',
         sessionNote: '',
         markTaskComplete: false,
@@ -2688,7 +2753,49 @@ Buy groceries"></textarea>
           this.sessionNote = '';
           this.markTaskComplete = false;
         },
-        
+
+        openAddManualSessionModal(task) {
+          this.manualSessionTask = task;
+          this.manualSessionDuration = 25;
+          this.manualSessionDate = new Date().toISOString().split('T')[0];
+          this.manualSessionFocusLevel = 'neutral';
+          this.manualSessionNote = '';
+          this.showAddManualSessionModal = true;
+        },
+
+        addManualSession() {
+          if (!this.manualSessionDuration || this.manualSessionDuration < 1) return;
+
+          // Calculate start/end times based on date and duration
+          const endDate = new Date(this.manualSessionDate + 'T12:00:00');
+          const startDate = new Date(endDate.getTime() - (this.manualSessionDuration * 60 * 1000));
+
+          const session = {
+            id: this.generateId(),
+            taskId: this.manualSessionTask.id,
+            status: 'completed',
+            startedAt: startDate.toISOString(),
+            endedAt: endDate.toISOString(),
+            focusLevel: this.manualSessionFocusLevel,
+            comments: this.manualSessionNote.trim()
+              ? [{ id: this.generateId(), content: this.manualSessionNote, createdAt: new Date().toISOString() }]
+              : [],
+            manual: true
+          };
+
+          const actualTask = this.tasks.find(t => t.id === this.manualSessionTask.id);
+          actualTask.sessions = actualTask.sessions || [];
+          actualTask.sessions.push(session);
+
+          // Update selectedTask if viewing task detail
+          if (this.selectedTask?.id === actualTask.id) {
+            this.selectedTask = JSON.parse(JSON.stringify(actualTask));
+          }
+
+          this.showAddManualSessionModal = false;
+          this.manualSessionTask = null;
+        },
+
         // === TAG OPERATIONS ===
         addTag() {
           if (!this.newTagName.trim()) return;

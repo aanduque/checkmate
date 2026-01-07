@@ -495,12 +495,12 @@
     </button>
   </div>
 
-  <!-- FAB (Floating Action Button) for adding tasks -->
-  <div class="fab z-50">
-    <button @click="showCreateTaskModal = true" class="btn btn-primary btn-circle btn-lg shadow-lg">
-      <ion-icon name="add-outline" style="font-size: 1.5em;"></ion-icon>
-    </button>
-  </div>
+  <!-- FAB (Floating Action Button) for adding tasks - positioned above dock -->
+  <button @click="showCreateTaskModal = true"
+          class="btn btn-primary btn-circle btn-lg shadow-lg fixed right-4 z-50"
+          style="bottom: 5rem;">
+    <ion-icon name="add-outline" style="font-size: 1.5em;"></ion-icon>
+  </button>
   
   <!-- ==================== MODALS ==================== -->
 

@@ -380,6 +380,210 @@
           </div>
         </div>
 
+        <!-- ==================== STATS VIEW ==================== -->
+        <div x-show="currentView === 'stats'" class="p-4 pb-24 space-y-4">
+
+          <!-- Today's Progress -->
+          <div class="stats stats-vertical md:stats-horizontal shadow w-full bg-base-100">
+            <div class="stat">
+              <div class="stat-figure text-primary">
+                <ion-icon name="checkmark-circle-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Tasks Today</div>
+              <div class="stat-value text-primary" x-text="getTodayCompletedTasks().length"></div>
+              <div class="stat-desc">
+                <span x-show="getYesterdayCompletedTasks().length > 0">
+                  <span x-text="getTodayCompletedTasks().length >= getYesterdayCompletedTasks().length ? '↗︎' : '↘︎'"></span>
+                  vs <span x-text="getYesterdayCompletedTasks().length"></span> yesterday
+                </span>
+                <span x-show="getYesterdayCompletedTasks().length === 0">No tasks yesterday</span>
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-secondary">
+                <ion-icon name="star-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Points Today</div>
+              <div class="stat-value text-secondary" x-text="getTodayPoints()"></div>
+              <div class="stat-desc">
+                <template x-if="getTopPointsTag()">
+                  <span>
+                    Top: <span x-text="getTopPointsTag()?.name"></span>
+                  </span>
+                </template>
+                <template x-if="!getTopPointsTag()">
+                  <span>Complete tasks to earn</span>
+                </template>
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-accent">
+                <ion-icon name="time-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Focus Time</div>
+              <div class="stat-value text-accent" x-text="formatDuration(getTodayFocusTime())"></div>
+              <div class="stat-desc" x-text="getTodaySessions().length + ' session' + (getTodaySessions().length !== 1 ? 's' : '')"></div>
+            </div>
+          </div>
+
+          <!-- Weekly Summary -->
+          <div class="stats stats-vertical md:stats-horizontal shadow w-full bg-base-100">
+            <div class="stat">
+              <div class="stat-figure text-info">
+                <ion-icon name="calendar-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">This Week</div>
+              <div class="stat-value" x-text="getWeekCompletedTasks().length"></div>
+              <div class="stat-desc">
+                <span x-text="getWeekPoints()"></span> points earned
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure">
+                <ion-icon name="trending-up-outline" class="text-3xl" :class="getWeekPoints() >= getLastWeekPoints() ? 'text-success' : 'text-warning'"></ion-icon>
+              </div>
+              <div class="stat-title">vs Last Week</div>
+              <div class="stat-value" :class="getWeekPoints() >= getLastWeekPoints() ? 'text-success' : 'text-warning'">
+                <span x-text="getWeekPoints() >= getLastWeekPoints() ? '+' : ''"></span><span x-text="getWeekPoints() - getLastWeekPoints()"></span>
+              </div>
+              <div class="stat-desc">
+                <span x-text="getLastWeekPoints()"></span> points last week
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-warning">
+                <ion-icon name="flame-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Streak</div>
+              <div class="stat-value text-warning" x-text="getCurrentStreak()"></div>
+              <div class="stat-desc" x-text="getCurrentStreak() === 1 ? 'day' : 'days'"></div>
+            </div>
+          </div>
+
+          <!-- Tag Performance Card -->
+          <div class="card bg-base-100 shadow">
+            <div class="card-body">
+              <h2 class="card-title text-base">
+                <ion-icon name="pricetags-outline"></ion-icon>
+                Tag Performance This Week
+              </h2>
+              <div class="space-y-3">
+                <template x-for="tag in tags" :key="tag.id">
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                      <span class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: tag.color }"></span>
+                        <span x-text="tag.name"></span>
+                      </span>
+                      <span class="opacity-70">
+                        <span x-text="getWeekPointsByTag()[tag.id] || 0"></span>
+                        / <span x-text="tag.defaultCapacity || 20"></span>
+                      </span>
+                    </div>
+                    <progress
+                      class="progress h-2"
+                      :class="{
+                        'progress-success': (getWeekPointsByTag()[tag.id] || 0) >= (tag.defaultCapacity || 20),
+                        'progress-primary': (getWeekPointsByTag()[tag.id] || 0) < (tag.defaultCapacity || 20)
+                      }"
+                      :value="getWeekPointsByTag()[tag.id] || 0"
+                      :max="tag.defaultCapacity || 20">
+                    </progress>
+                  </div>
+                </template>
+                <template x-if="tags.length === 0">
+                  <p class="text-sm opacity-50">No tags created yet</p>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weekly Activity Pattern -->
+          <div class="card bg-base-100 shadow">
+            <div class="card-body">
+              <h2 class="card-title text-base">
+                <ion-icon name="bar-chart-outline"></ion-icon>
+                Weekly Activity
+              </h2>
+              <div class="flex items-end justify-between gap-1 h-24">
+                <template x-for="day in getDailyActivityPattern()" :key="day.day">
+                  <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-full bg-base-200 rounded-t relative" style="min-height: 4px;"
+                         :style="{
+                           height: (day.count > 0 ? Math.max(20, Math.min(100, day.count * 20)) : 4) + '%',
+                           backgroundColor: day.isToday ? 'oklch(var(--p))' : (day.count > 0 ? 'oklch(var(--s))' : '')
+                         }">
+                    </div>
+                    <span class="text-xs opacity-70" :class="{ 'font-bold': day.isToday }" x-text="day.day"></span>
+                  </div>
+                </template>
+              </div>
+              <div class="text-xs text-center opacity-50 mt-2">Tasks completed per day</div>
+            </div>
+          </div>
+
+          <!-- Focus Quality Card -->
+          <div class="card bg-base-100 shadow">
+            <div class="card-body">
+              <h2 class="card-title text-base">
+                <ion-icon name="pulse-outline"></ion-icon>
+                Focus Quality
+              </h2>
+              <div class="flex items-center gap-6">
+                <div class="radial-progress text-success"
+                     :style="{ '--value': getFocusQualityStats().positivePercent, '--size': '5rem' }"
+                     role="progressbar">
+                  <span class="text-sm font-bold" x-text="getFocusQualityStats().positivePercent + '%'"></span>
+                </div>
+                <div class="flex-1 space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="flex items-center gap-2">
+                      <ion-icon name="happy-outline" class="text-success"></ion-icon>
+                      Good Focus
+                    </span>
+                    <span x-text="getFocusQualityStats().positive"></span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="flex items-center gap-2">
+                      <ion-icon name="remove-outline" class="text-warning"></ion-icon>
+                      Neutral
+                    </span>
+                    <span x-text="getFocusQualityStats().neutral"></span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="flex items-center gap-2">
+                      <ion-icon name="sad-outline" class="text-error"></ion-icon>
+                      Struggled
+                    </span>
+                    <span x-text="getFocusQualityStats().negative"></span>
+                  </div>
+                  <div class="divider my-1"></div>
+                  <div class="flex justify-between text-sm">
+                    <span>Avg Session</span>
+                    <span class="font-medium" x-text="formatDuration(getFocusQualityStats().avgDuration)"></span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span>Week Total</span>
+                    <span class="font-medium" x-text="formatDuration(getWeekFocusTime())"></span>
+                  </div>
+                </div>
+              </div>
+              <template x-if="getFocusQualityStats().total === 0">
+                <div class="text-center py-4 opacity-50">
+                  <ion-icon name="hourglass-outline" class="text-2xl mb-2"></ion-icon>
+                  <p class="text-sm">No focus sessions this week yet</p>
+                </div>
+              </template>
+            </div>
+          </div>
+
+        </div>
+        <!-- End Stats View -->
+
       </div>
       <!-- End Page Content -->
 
@@ -511,6 +715,10 @@
     <button @click="currentView = 'tasks'" :class="{ 'dock-active': currentView === 'tasks' }">
       <ion-icon name="list-outline" style="font-size: 1.2em;"></ion-icon>
       <span class="dock-label">Tasks</span>
+    </button>
+    <button @click="currentView = 'stats'" :class="{ 'dock-active': currentView === 'stats' }">
+      <ion-icon name="stats-chart-outline" style="font-size: 1.2em;"></ion-icon>
+      <span class="dock-label">Stats</span>
     </button>
   </div>
 
@@ -2359,7 +2567,228 @@ Buy groceries #personal"></textarea>
         clearRoutineOverride() {
           this.manualRoutineId = '';
         },
-        
+
+        // === STATS HELPERS ===
+        getStartOfDay(date = new Date()) {
+          const d = new Date(date);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        },
+
+        getStartOfWeek(date = new Date()) {
+          const d = new Date(date);
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+          d.setDate(diff);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        },
+
+        getCompletedTasksInRange(startDate, endDate) {
+          return this.tasks.filter(t => {
+            if (t.status !== 'completed' || !t.completedAt) return false;
+            const completed = new Date(t.completedAt);
+            return completed >= startDate && completed < endDate;
+          });
+        },
+
+        getTodayCompletedTasks() {
+          const start = this.getStartOfDay();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 1);
+          return this.getCompletedTasksInRange(start, end);
+        },
+
+        getYesterdayCompletedTasks() {
+          const todayStart = this.getStartOfDay();
+          const yesterdayStart = new Date(todayStart);
+          yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+          return this.getCompletedTasksInRange(yesterdayStart, todayStart);
+        },
+
+        getWeekCompletedTasks() {
+          const start = this.getStartOfWeek();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 7);
+          return this.getCompletedTasksInRange(start, end);
+        },
+
+        getLastWeekCompletedTasks() {
+          const thisWeekStart = this.getStartOfWeek();
+          const lastWeekStart = new Date(thisWeekStart);
+          lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+          return this.getCompletedTasksInRange(lastWeekStart, thisWeekStart);
+        },
+
+        getPointsFromTasks(tasks) {
+          return tasks.reduce((total, task) => {
+            return total + Object.values(task.tagPoints || {}).reduce((sum, p) => sum + p, 0);
+          }, 0);
+        },
+
+        getTodayPoints() {
+          return this.getPointsFromTasks(this.getTodayCompletedTasks());
+        },
+
+        getWeekPoints() {
+          return this.getPointsFromTasks(this.getWeekCompletedTasks());
+        },
+
+        getLastWeekPoints() {
+          return this.getPointsFromTasks(this.getLastWeekCompletedTasks());
+        },
+
+        getSessionsInRange(startDate, endDate) {
+          const sessions = [];
+          this.tasks.forEach(task => {
+            (task.sessions || []).forEach(session => {
+              if (session.status === 'completed' && session.endedAt) {
+                const ended = new Date(session.endedAt);
+                if (ended >= startDate && ended < endDate) {
+                  sessions.push({ ...session, taskId: task.id });
+                }
+              }
+            });
+          });
+          return sessions;
+        },
+
+        getSessionDuration(session) {
+          if (!session.startedAt || !session.endedAt) return 0;
+          return (new Date(session.endedAt) - new Date(session.startedAt)) / 1000; // seconds
+        },
+
+        getTodayFocusTime() {
+          const start = this.getStartOfDay();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 1);
+          const sessions = this.getSessionsInRange(start, end);
+          return sessions.reduce((total, s) => total + this.getSessionDuration(s), 0);
+        },
+
+        getWeekFocusTime() {
+          const start = this.getStartOfWeek();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 7);
+          const sessions = this.getSessionsInRange(start, end);
+          return sessions.reduce((total, s) => total + this.getSessionDuration(s), 0);
+        },
+
+        formatDuration(seconds) {
+          const hrs = Math.floor(seconds / 3600);
+          const mins = Math.floor((seconds % 3600) / 60);
+          if (hrs > 0) return `${hrs}h ${mins}m`;
+          return `${mins}m`;
+        },
+
+        getTodaySessions() {
+          const start = this.getStartOfDay();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 1);
+          return this.getSessionsInRange(start, end);
+        },
+
+        getCurrentStreak() {
+          let streak = 0;
+          const today = this.getStartOfDay();
+          let checkDate = new Date(today);
+
+          // Check if today has completions
+          const todayTasks = this.getTodayCompletedTasks();
+          if (todayTasks.length === 0) {
+            // Check yesterday instead as starting point
+            checkDate.setDate(checkDate.getDate() - 1);
+          }
+
+          while (true) {
+            const dayStart = new Date(checkDate);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+
+            const completed = this.getCompletedTasksInRange(dayStart, dayEnd);
+            if (completed.length === 0) break;
+
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+
+            // Safety limit
+            if (streak > 365) break;
+          }
+
+          return streak;
+        },
+
+        getWeekPointsByTag() {
+          const weekTasks = this.getWeekCompletedTasks();
+          const byTag = {};
+
+          weekTasks.forEach(task => {
+            Object.entries(task.tagPoints || {}).forEach(([tagId, points]) => {
+              byTag[tagId] = (byTag[tagId] || 0) + points;
+            });
+          });
+
+          return byTag;
+        },
+
+        getDailyActivityPattern() {
+          const weekStart = this.getStartOfWeek();
+          const pattern = [];
+
+          for (let i = 0; i < 7; i++) {
+            const dayStart = new Date(weekStart);
+            dayStart.setDate(dayStart.getDate() + i);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+
+            const tasks = this.getCompletedTasksInRange(dayStart, dayEnd);
+            pattern.push({
+              day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+              count: tasks.length,
+              points: this.getPointsFromTasks(tasks),
+              isToday: dayStart.toDateString() === new Date().toDateString()
+            });
+          }
+
+          return pattern;
+        },
+
+        getFocusQualityStats() {
+          const start = this.getStartOfWeek();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 7);
+          const sessions = this.getSessionsInRange(start, end);
+
+          const total = sessions.length;
+          const positive = sessions.filter(s => s.focusLevel === 'positive').length;
+          const neutral = sessions.filter(s => s.focusLevel === 'neutral').length;
+          const negative = sessions.filter(s => s.focusLevel === 'negative').length;
+
+          return {
+            total,
+            positive,
+            neutral,
+            negative,
+            positivePercent: total > 0 ? Math.round((positive / total) * 100) : 0,
+            avgDuration: total > 0 ? sessions.reduce((sum, s) => sum + this.getSessionDuration(s), 0) / total : 0
+          };
+        },
+
+        getTopPointsTag() {
+          const byTag = this.getWeekPointsByTag();
+          let topTagId = null;
+          let topPoints = 0;
+
+          Object.entries(byTag).forEach(([tagId, points]) => {
+            if (points > topPoints) {
+              topPoints = points;
+              topTagId = tagId;
+            }
+          });
+
+          return topTagId ? this.getTagById(topTagId) : null;
+        },
+
         // === RESET ===
         resetAllData() {
           if (!confirm('This will delete ALL data. Are you sure?')) return;

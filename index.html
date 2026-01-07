@@ -1005,7 +1005,12 @@
         },
         
         get backlogTasks() {
-          return this.tasks.filter(t => t.location.type === 'backlog' && t.status === 'active' && !t.recurrence);
+          let tasks = this.tasks.filter(t => t.location.type === 'backlog' && t.status === 'active' && !t.recurrence);
+          // Apply routine filter if active
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          return tasks;
         },
         
         get filteredBacklogTasks() {
@@ -1044,12 +1049,17 @@
         get todayTasks() {
           const sprint = this.sprints[0]; // Current sprint
           if (!sprint) return [];
-          return this.tasks.filter(t =>
+          let tasks = this.tasks.filter(t =>
             t.location.type === 'sprint' &&
             t.location.sprintId === sprint.id &&
             t.status === 'active' &&
             !t.recurrence
-          ).sort((a, b) => {
+          );
+          // Apply routine filter if active
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          return tasks.sort((a, b) => {
             // Returned tasks bubble to top
             if (a.skipState?.type === 'for_day' && a.skipState?.returned) return -1;
             if (b.skipState?.type === 'for_day' && b.skipState?.returned) return 1;
@@ -1076,12 +1086,17 @@
         getKanbanSprintTasks(sprintIndex) {
           const sprint = this.sprints[sprintIndex];
           if (!sprint) return [];
-          return this.tasks.filter(t =>
+          let tasks = this.tasks.filter(t =>
             t.location.type === 'sprint' &&
             t.location.sprintId === sprint.id &&
             t.status === 'active' &&
             !t.recurrence
-          ).sort((a, b) => (a.order || 0) - (b.order || 0));
+          );
+          // Apply routine filter if active
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          return tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
         },
 
         // The #1 priority task to focus on

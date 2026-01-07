@@ -236,7 +236,8 @@
                   <span class="badge badge-sm badge-accent" x-text="backlogTasks.length"></span>
                 </div>
                 <div class="collapse-content p-0">
-                  <div id="kanban-backlog" data-column="backlog" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
+                  <!-- Regular backlog tasks (draggable) -->
+                  <div id="kanban-backlog" data-column="backlog" class="kanban-column-content space-y-2 p-2 bg-base-200/50 min-h-[50px]">
                     <template x-for="task in backlogTasks" :key="task.id">
                       <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm">
                         <div class="flex items-start gap-2">
@@ -258,6 +259,37 @@
                       </div>
                     </template>
                   </div>
+
+                  <!-- Recurring Templates (NOT draggable) -->
+                  <template x-if="recurringTemplates.length > 0">
+                    <div class="border-t border-base-300">
+                      <div class="px-3 py-2 text-xs font-medium opacity-60 flex items-center gap-1 bg-base-200/30">
+                        <ion-icon name="repeat-outline"></ion-icon>
+                        <span>Recurring Templates</span>
+                        <span class="badge badge-xs" x-text="recurringTemplates.length"></span>
+                      </div>
+                      <div class="space-y-2 p-2 bg-base-200/50 rounded-b-lg">
+                        <template x-for="task in recurringTemplates" :key="task.id">
+                          <div @click="openTaskDetail(task)" class="kanban-task bg-base-100 rounded-lg p-3 cursor-pointer shadow-sm border-l-4 border-secondary">
+                            <div class="flex items-start gap-2">
+                              <div class="flex-1 min-w-0">
+                                <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                                <p class="text-xs opacity-60 mt-1" x-text="describeRRule(task.recurrence)"></p>
+                                <div class="flex items-center gap-1 mt-1 flex-wrap">
+                                  <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                                    <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                      <span x-text="points"></span>
+                                    </span>
+                                  </template>
+                                </div>
+                              </div>
+                              <ion-icon name="chevron-forward-outline" class="opacity-40 flex-shrink-0"></ion-icon>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -429,22 +461,6 @@
         </ul>
 
         <div class="divider my-2"></div>
-
-        <!-- Recurring Templates -->
-        <div class="mb-4">
-          <p class="text-xs font-medium opacity-50 uppercase mb-2">Recurring Tasks</p>
-          <div class="space-y-1 max-h-32 overflow-y-auto">
-            <template x-for="template in recurringTemplates.slice(0, 5)" :key="template.id">
-              <div class="flex items-center gap-2 p-1 text-sm">
-                <ion-icon name="repeat-outline" class="text-secondary"></ion-icon>
-                <span class="truncate flex-1" x-text="template.title"></span>
-              </div>
-            </template>
-            <template x-if="recurringTemplates.length === 0">
-              <p class="text-sm opacity-50">No recurring tasks</p>
-            </template>
-          </div>
-        </div>
 
         <!-- Completed Summary -->
         <div class="mb-4">

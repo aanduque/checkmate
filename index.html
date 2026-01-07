@@ -1,33 +1,31 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" :data-theme="settings.theme || 'light'">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Check Mate - ADHD Task Manager</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'on-track': '#22c55e',
-            'at-risk': '#eab308',
-            'off-track': '#ef4444',
-          }
-        }
-      }
+
+  <!-- daisyUI + Tailwind CSS v4 -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Custom theme colors -->
+  <style type="text/tailwindcss">
+    @theme {
+      --color-on-track: #22c55e;
+      --color-at-risk: #eab308;
+      --color-off-track: #ef4444;
     }
-  </script>
-  
+  </style>
+
   <!-- RRule for recurrence -->
   <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
 
   <!-- Filtrex for safe expression evaluation -->
-  <script src="https://cdn.jsdelivr.net/npm/filtrex@3/dist/filtrex.min.js"></script>
-  
+  <script src="https://cdn.jsdelivr.net/npm/filtrex@3.1.0/dist/browser/filtrex.min.js"></script>
+
   <!-- Alpine Plugins -->
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3/dist/cdn.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/sort@3/dist/cdn.min.js"></script>
@@ -47,130 +45,118 @@
     .task-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .health-pulse { animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-    .modal-backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
     .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     /* Drag and drop styles */
-    .sortable-ghost { opacity: 0.4; background: #e0e7ff; }
-    .sortable-drag { background: white; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-drag { box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
     .sortable-chosen { cursor: grabbing; }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen" x-cloak x-data="checkMate()" x-init="init()">
+<body class="bg-base-200 min-h-screen" x-cloak x-data="checkMate()" x-init="init()">
   
   <div class="max-w-7xl mx-auto p-4">
     
     <!-- Header -->
-    <header class="bg-white rounded-lg shadow-sm p-4 mb-6">
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div class="flex items-center gap-3">
-          <ion-icon name="checkbox-outline" class="text-3xl text-indigo-600"></ion-icon>
-          <div>
-            <h1 class="text-2xl font-bold text-gray-800">Check Mate</h1>
-            <p class="text-sm text-gray-500">ADHD-Focused Task Management</p>
-          </div>
-        </div>
-        
-        <div class="flex items-center gap-4 flex-wrap">
-          <!-- Active Routine Indicator -->
-          <template x-if="activeRoutine">
-            <div class="flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
-                 :style="{ backgroundColor: activeRoutine.color + '20', color: activeRoutine.color }">
-              <span x-text="activeRoutine.icon"></span>
-              <span x-text="activeRoutine.name"></span>
-              <button @click="clearRoutineOverride()" class="ml-1 opacity-60 hover:opacity-100" title="Clear override"><ion-icon name="close-outline"></ion-icon></button>
-            </div>
-          </template>
-          
-          <!-- Manual Routine Selector -->
-          <select x-model="manualRoutineId" class="text-sm border rounded-lg px-2 py-1">
-            <option value="">Auto Routine</option>
-            <template x-for="routine in routines" :key="routine.id">
-              <option :value="routine.id" x-text="routine.icon + ' ' + routine.name"></option>
-            </template>
-          </select>
-          
-          <!-- Current Date -->
-          <div class="text-sm text-gray-600" x-text="formatDate(today)"></div>
-          
-          <!-- Action Buttons -->
-          <button @click="showTagsModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Manage Tags"><ion-icon name="pricetag-outline"></ion-icon></button>
-          <button @click="showRoutinesModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Manage Routines"><ion-icon name="sync-outline"></ion-icon></button>
-          <button @click="showSettingsModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Settings"><ion-icon name="settings-outline"></ion-icon></button>
+    <div class="navbar bg-base-100 rounded-box shadow-sm mb-6">
+      <div class="navbar-start gap-3">
+        <ion-icon name="checkbox-outline" class="text-3xl text-primary"></ion-icon>
+        <div>
+          <h1 class="text-xl font-bold">Check Mate</h1>
+          <p class="text-xs opacity-70">ADHD-Focused Task Management</p>
         </div>
       </div>
-    </header>
+
+      <div class="navbar-end gap-2 flex-wrap">
+        <!-- Active Routine Indicator -->
+        <template x-if="activeRoutine">
+          <div class="badge badge-lg gap-1" :style="{ backgroundColor: activeRoutine.color + '20', color: activeRoutine.color, borderColor: activeRoutine.color }">
+            <span x-text="activeRoutine.icon"></span>
+            <span x-text="activeRoutine.name"></span>
+            <button @click="clearRoutineOverride()" class="ml-1 opacity-60 hover:opacity-100" title="Clear override"><ion-icon name="close-outline" class="text-sm"></ion-icon></button>
+          </div>
+        </template>
+
+        <!-- Manual Routine Selector -->
+        <select x-model="manualRoutineId" class="select select-bordered select-sm">
+          <option value="">Auto Routine</option>
+          <template x-for="routine in routines" :key="routine.id">
+            <option :value="routine.id" x-text="routine.icon + ' ' + routine.name"></option>
+          </template>
+        </select>
+
+        <!-- Current Date -->
+        <div class="text-sm opacity-70" x-text="formatDate(today)"></div>
+
+        <!-- Theme Toggle -->
+        <label class="swap swap-rotate btn btn-ghost btn-circle">
+          <input type="checkbox" :checked="settings.theme === 'dark'" @change="settings.theme = $event.target.checked ? 'dark' : 'light'" />
+          <ion-icon name="sunny-outline" class="swap-off text-xl"></ion-icon>
+          <ion-icon name="moon-outline" class="swap-on text-xl"></ion-icon>
+        </label>
+
+        <!-- Action Buttons -->
+        <button @click="showTagsModal = true" class="btn btn-ghost btn-circle" title="Manage Tags"><ion-icon name="pricetag-outline"></ion-icon></button>
+        <button @click="showRoutinesModal = true" class="btn btn-ghost btn-circle" title="Manage Routines"><ion-icon name="sync-outline"></ion-icon></button>
+        <button @click="showSettingsModal = true" class="btn btn-ghost btn-circle" title="Settings"><ion-icon name="settings-outline"></ion-icon></button>
+      </div>
+    </div>
     
     <!-- Active Session Banner -->
     <template x-if="activeSession">
-      <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg p-4 mb-6">
-        <div class="flex items-center justify-between flex-wrap gap-4">
-          <div class="flex items-center gap-4">
-            <ion-icon name="radio-button-on-outline" class="text-4xl"></ion-icon>
-            <div>
-              <p class="text-sm opacity-80">Focusing on</p>
-              <p class="font-bold text-lg" x-text="getTaskById(activeSession.taskId)?.title"></p>
-            </div>
-          </div>
-          <div class="flex items-center gap-6">
-            <div class="text-center">
-              <p class="text-3xl font-mono font-bold" x-text="formatSessionTime(sessionElapsed)"></p>
-              <p class="text-xs opacity-80">elapsed</p>
-            </div>
-            <div class="flex gap-2">
-              <button @click="openCompleteSessionModal()" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium flex items-center gap-1"><ion-icon name="checkmark-outline"></ion-icon> Complete</button>
-              <button @click="abandonSession()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg flex items-center gap-1"><ion-icon name="close-outline"></ion-icon> Abandon</button>
-            </div>
-          </div>
+      <div class="alert alert-info shadow-lg mb-6">
+        <ion-icon name="radio-button-on-outline" class="text-4xl animate-pulse"></ion-icon>
+        <div>
+          <p class="text-sm opacity-80">Focusing on</p>
+          <p class="font-bold text-lg" x-text="getTaskById(activeSession.taskId)?.title"></p>
+        </div>
+        <div class="text-center">
+          <p class="text-3xl font-mono font-bold" x-text="formatSessionTime(sessionElapsed)"></p>
+          <p class="text-xs opacity-80">elapsed</p>
+        </div>
+        <div class="flex gap-2">
+          <button @click="openCompleteSessionModal()" class="btn btn-success btn-sm gap-1"><ion-icon name="checkmark-outline"></ion-icon> Complete</button>
+          <button @click="abandonSession()" class="btn btn-ghost btn-sm gap-1"><ion-icon name="close-outline"></ion-icon> Abandon</button>
         </div>
       </div>
     </template>
-    
+
     <!-- Main Navigation Tabs -->
-    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-      <button @click="currentView = 'sprint'"
-              :class="currentView === 'sprint' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
-        <ion-icon name="calendar-outline" class="mr-1"></ion-icon> Sprints
+    <div role="tablist" class="tabs tabs-boxed bg-base-100 mb-6 p-1">
+      <button @click="currentView = 'sprint'" role="tab" :class="{'tab-active': currentView === 'sprint'}" class="tab gap-1">
+        <ion-icon name="calendar-outline"></ion-icon> Sprints
       </button>
-      <button @click="currentView = 'backlog'"
-              :class="currentView === 'backlog' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
-        <ion-icon name="clipboard-outline" class="mr-1"></ion-icon> Backlog <span class="text-xs opacity-70 ml-1" x-text="'(' + backlogTasks.length + ')'"></span>
+      <button @click="currentView = 'backlog'" role="tab" :class="{'tab-active': currentView === 'backlog'}" class="tab gap-1">
+        <ion-icon name="clipboard-outline"></ion-icon> Backlog <span class="badge badge-sm" x-text="backlogTasks.length"></span>
       </button>
-      <button @click="currentView = 'recurring'"
-              :class="currentView === 'recurring' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
-        <ion-icon name="repeat-outline" class="mr-1"></ion-icon> Recurring <span class="text-xs opacity-70 ml-1" x-text="'(' + recurringTemplates.length + ')'"></span>
+      <button @click="currentView = 'recurring'" role="tab" :class="{'tab-active': currentView === 'recurring'}" class="tab gap-1">
+        <ion-icon name="repeat-outline"></ion-icon> Recurring <span class="badge badge-sm" x-text="recurringTemplates.length"></span>
       </button>
-      <button @click="currentView = 'completed'"
-              :class="currentView === 'completed' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
-        <ion-icon name="checkmark-circle-outline" class="mr-1"></ion-icon> Completed <span class="text-xs opacity-70 ml-1" x-text="'(' + completedTasks.length + ')'"></span>
+      <button @click="currentView = 'completed'" role="tab" :class="{'tab-active': currentView === 'completed'}" class="tab gap-1">
+        <ion-icon name="checkmark-circle-outline"></ion-icon> Completed <span class="badge badge-sm" x-text="completedTasks.length"></span>
       </button>
     </div>
     
     <!-- Tag Filter Bar -->
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-      <div class="flex items-center gap-4 flex-wrap">
+    <div class="card bg-base-100 shadow-sm mb-6">
+      <div class="card-body p-4 flex-row items-center gap-4 flex-wrap">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-sm text-gray-500">Filter:</span>
+          <span class="text-sm opacity-70">Filter:</span>
           <button @click="toggleTagFilter(null)"
-                  :class="selectedTagFilters.length === 0 ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-700'"
-                  class="px-2 py-1 rounded text-sm">All</button>
+                  :class="selectedTagFilters.length === 0 ? 'btn-neutral' : 'btn-ghost'"
+                  class="btn btn-xs">All</button>
           <template x-for="tag in tags" :key="tag.id">
             <button @click="toggleTagFilter(tag.id)"
                     :class="selectedTagFilters.includes(tag.id) ? 'ring-2 ring-offset-1' : ''"
                     :style="{ backgroundColor: tag.color + '20', color: tag.color, '--tw-ring-color': tag.color }"
-                    class="px-2 py-1 rounded text-sm flex items-center gap-1">
+                    class="btn btn-xs gap-1">
               <span x-text="tag.icon"></span>
               <span x-text="tag.name"></span>
             </button>
           </template>
         </div>
         <div class="flex-1"></div>
-        <button @click="showCreateTaskModal = true" 
-                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium flex items-center gap-2">
-          <span>+</span> New Task
+        <button @click="showCreateTaskModal = true" class="btn btn-primary btn-sm gap-1">
+          <ion-icon name="add-outline"></ion-icon> New Task
         </button>
       </div>
     </div>
@@ -178,457 +164,399 @@
     <!-- ==================== SPRINT VIEW ==================== -->
     <div x-show="currentView === 'sprint'" class="space-y-6">
       <!-- Sprint Tabs -->
-      <div class="flex gap-2 flex-wrap">
+      <div role="tablist" class="tabs tabs-boxed bg-base-100 p-1 w-fit">
         <template x-for="(sprint, index) in sprints" :key="sprint.id">
-          <button @click="selectedSprintIndex = index"
-                  :class="selectedSprintIndex === index ? 'bg-white shadow-md ring-2 ring-indigo-500' : 'bg-gray-200/50 hover:bg-gray-200'"
-                  class="px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+          <button @click="selectedSprintIndex = index" role="tab" :class="{'tab-active': selectedSprintIndex === index}" class="tab gap-2">
             <ion-icon :name="getSprintIcon(index)"></ion-icon>
             <span x-text="getSprintLabel(index)"></span>
-            <span class="text-xs px-2 py-0.5 rounded-full"
+            <span class="badge badge-sm"
                   :class="{
-                    'bg-on-track/20 text-on-track': getSprintHealth(sprint).overall === 'on_track',
-                    'bg-at-risk/20 text-at-risk': getSprintHealth(sprint).overall === 'at_risk',
-                    'bg-off-track/20 text-off-track': getSprintHealth(sprint).overall === 'off_track'
+                    'badge-success': getSprintHealth(sprint).overall === 'on_track',
+                    'badge-warning': getSprintHealth(sprint).overall === 'at_risk',
+                    'badge-error': getSprintHealth(sprint).overall === 'off_track'
                   }"
                   x-text="getSprintHealth(sprint).overall.replace('_', ' ')"></span>
           </button>
         </template>
       </div>
-      
+
       <!-- Sprint Content -->
       <template x-if="selectedSprint">
-        <div class="bg-white rounded-lg shadow-sm p-6">
-          <!-- Sprint Header -->
-          <div class="flex items-start justify-between mb-6 flex-wrap gap-4">
-            <div>
-              <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><ion-icon :name="getSprintIcon(selectedSprintIndex)"></ion-icon> <span x-text="getSprintLabel(selectedSprintIndex)"></span></h2>
-              <p class="text-sm text-gray-500">
-                <span x-text="formatDate(selectedSprint.startDate)"></span> - 
-                <span x-text="formatDate(selectedSprint.endDate)"></span>
-                <span class="ml-2 font-medium">(<span x-text="getDaysRemaining(selectedSprint)"></span> days left)</span>
-              </p>
-            </div>
-            <button @click="showSprintHealthModal = true" class="text-sm text-indigo-600 hover:underline">View health details</button>
-          </div>
-          
-          <!-- Capacity Cards -->
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-            <template x-for="tag in tags" :key="tag.id">
-              <div class="bg-gray-50 rounded-lg p-3">
-                <div class="flex items-center gap-2 mb-2">
-                  <span x-text="tag.icon"></span>
-                  <span class="text-sm font-medium truncate" x-text="tag.name"></span>
-                </div>
-                <div class="flex justify-between text-xs text-gray-600">
-                  <span>Used:</span>
-                  <span x-text="getSprintPointsForTag(selectedSprint, tag.id) + '/' + getCapacityForTag(selectedSprint, tag.id) + ' pts'"></span>
-                </div>
-                <div class="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all"
-                       :class="{
-                         'bg-on-track': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) <= 0.8,
-                         'bg-at-risk': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) > 0.8 && getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) <= 1,
-                         'bg-off-track': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) > 1
-                       }"
-                       :style="{ width: Math.min(100, (getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id)) * 100) + '%' }"></div>
-                </div>
-                <button @click="editSprintCapacity(selectedSprint, tag)" class="text-xs text-indigo-600 hover:underline mt-1">Edit</button>
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body">
+            <!-- Sprint Header -->
+            <div class="flex items-start justify-between flex-wrap gap-4">
+              <div>
+                <h2 class="card-title gap-2"><ion-icon :name="getSprintIcon(selectedSprintIndex)"></ion-icon> <span x-text="getSprintLabel(selectedSprintIndex)"></span></h2>
+                <p class="text-sm opacity-70">
+                  <span x-text="formatDate(selectedSprint.startDate)"></span> -
+                  <span x-text="formatDate(selectedSprint.endDate)"></span>
+                  <span class="ml-2 font-medium">(<span x-text="getDaysRemaining(selectedSprint)"></span> days left)</span>
+                </p>
               </div>
-            </template>
-          </div>
+              <button @click="showSprintHealthModal = true" class="btn btn-ghost btn-sm">View health details</button>
+            </div>
           
-          <!-- Sprint Tasks -->
-          <div class="space-y-3" x-sort="handleTaskReorder">
-            <template x-for="task in getSprintTasks(selectedSprint)" :key="task.id">
-              <div x-sort:item="task.id"
-                   class="task-card bg-gray-50 rounded-lg p-4 border-l-4 cursor-grab active:cursor-grabbing"
-                   :class="{
-                     'opacity-60': task.skipState?.type === 'for_day' && !task.skipState?.returned,
-                     'border-l-yellow-400 bg-yellow-50/50': task.skipState?.type === 'for_now',
-                     'border-l-blue-500 bg-blue-50/50': task.skipState?.type === 'for_day' && task.skipState?.returned
-                   }"
-                   :style="!task.skipState ? { borderLeftColor: getTaskPrimaryTag(task)?.color || '#ccc' } : {}">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex items-center gap-2 text-gray-400 cursor-grab" x-sort:handle><ion-icon name="reorder-three-outline"></ion-icon></div>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 class="font-medium text-gray-800" x-text="task.title"></h3>
-                      <template x-if="task.parentId">
-                        <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
-                      </template>
-                      <template x-if="task.skipState?.type === 'for_now'">
-                        <span class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="play-skip-forward-outline"></ion-icon> Skipped</span>
-                      </template>
-                      <template x-if="task.skipState?.type === 'for_day' && task.skipState?.returned">
-                        <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="arrow-undo-outline"></ion-icon> Returned!</span>
-                      </template>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5 mb-2">
-                      <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
-                        <span class="text-xs px-2 py-0.5 rounded-full"
-                              :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
-                          <span x-text="getTagById(tagId)?.icon"></span>
-                          <span x-text="getTagById(tagId)?.name"></span>
-                          <span class="font-bold" x-text="points + 'pt'"></span>
-                        </span>
-                      </template>
-                    </div>
-                    <div class="flex items-center gap-3 text-xs text-gray-500">
-                      <span x-text="getTaskAge(task) + 'd old'"></span>
-                      <span x-text="(task.sessions?.length || 0) + ' sessions'"></span>
-                      <span x-text="(task.comments?.length || 0) + ' comments'"></span>
-                    </div>
+            <!-- Capacity Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 my-4">
+              <template x-for="tag in tags" :key="tag.id">
+                <div class="bg-base-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span x-text="tag.icon"></span>
+                    <span class="text-sm font-medium truncate" x-text="tag.name"></span>
                   </div>
-                  <div class="flex items-center gap-1">
-                    <button @click="startSession(task)" :disabled="activeSession"
-                            class="p-2 hover:bg-white rounded-lg text-green-600 disabled:opacity-40" title="Start Session"><ion-icon name="play-outline"></ion-icon></button>
-                    <button @click="openTaskDetail(task)" class="p-2 hover:bg-white rounded-lg" title="Details"><ion-icon name="create-outline"></ion-icon></button>
-                    <div class="relative" x-data="{ open: false }">
-                      <button @click="open = !open" class="p-2 hover:bg-white rounded-lg"><ion-icon name="ellipsis-vertical-outline"></ion-icon></button>
-                      <div x-show="open" @click.away="open = false" x-transition
-                           class="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
-                        <template x-if="task.skipState">
-                          <button @click="clearSkipState(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="arrow-undo-outline"></ion-icon> Clear skip</button>
-                        </template>
-                        <button @click="skipTaskForNow(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="play-skip-forward-outline"></ion-icon> Skip for now</button>
-                        <button @click="openSkipForDayModal(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="calendar-outline"></ion-icon> Skip for day</button>
-                        <button @click="completeTask(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-green-600 flex items-center gap-2"><ion-icon name="checkmark-circle-outline"></ion-icon> Complete</button>
-                        <button @click="moveTaskToBacklog(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="clipboard-outline"></ion-icon> To Backlog</button>
-                        <button @click="cancelTask(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-red-600 flex items-center gap-2"><ion-icon name="trash-outline"></ion-icon> Cancel</button>
+                  <div class="flex justify-between text-xs opacity-70">
+                    <span>Used:</span>
+                    <span x-text="getSprintPointsForTag(selectedSprint, tag.id) + '/' + getCapacityForTag(selectedSprint, tag.id) + ' pts'"></span>
+                  </div>
+                  <progress class="progress mt-2"
+                       :class="{
+                         'progress-success': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) <= 0.8,
+                         'progress-warning': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) > 0.8 && getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) <= 1,
+                         'progress-error': getSprintPointsForTag(selectedSprint, tag.id) / getCapacityForTag(selectedSprint, tag.id) > 1
+                       }"
+                       :value="getSprintPointsForTag(selectedSprint, tag.id)"
+                       :max="getCapacityForTag(selectedSprint, tag.id)"></progress>
+                  <button @click="editSprintCapacity(selectedSprint, tag)" class="btn btn-ghost btn-xs mt-1">Edit</button>
+                </div>
+              </template>
+            </div>
+
+            <!-- Sprint Tasks -->
+            <div class="space-y-3" x-sort="handleTaskReorder">
+              <template x-for="task in getSprintTasks(selectedSprint)" :key="task.id">
+                <div x-sort:item="task.id"
+                     class="card bg-base-200 border-l-4 cursor-grab active:cursor-grabbing"
+                     :class="{
+                       'opacity-60': task.skipState?.type === 'for_day' && !task.skipState?.returned,
+                       'border-l-warning bg-warning/10': task.skipState?.type === 'for_now',
+                       'border-l-info bg-info/10': task.skipState?.type === 'for_day' && task.skipState?.returned
+                     }"
+                     :style="!task.skipState ? { borderLeftColor: getTaskPrimaryTag(task)?.color || 'oklch(var(--bc)/0.2)' } : {}">
+                  <div class="card-body p-4">
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="flex items-center gap-2 opacity-40 cursor-grab" x-sort:handle><ion-icon name="reorder-three-outline"></ion-icon></div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 class="font-medium" x-text="task.title"></h3>
+                          <template x-if="task.parentId">
+                            <span class="badge badge-secondary badge-sm gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
+                          </template>
+                          <template x-if="task.skipState?.type === 'for_now'">
+                            <span class="badge badge-warning badge-sm gap-1"><ion-icon name="play-skip-forward-outline"></ion-icon> Skipped</span>
+                          </template>
+                          <template x-if="task.skipState?.type === 'for_day' && task.skipState?.returned">
+                            <span class="badge badge-info badge-sm gap-1"><ion-icon name="arrow-undo-outline"></ion-icon> Returned!</span>
+                          </template>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mb-2">
+                          <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                            <span class="badge badge-sm" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
+                              <span x-text="getTagById(tagId)?.icon"></span>
+                              <span x-text="getTagById(tagId)?.name"></span>
+                              <span class="font-bold" x-text="points + 'pt'"></span>
+                            </span>
+                          </template>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs opacity-60">
+                          <span x-text="getTaskAge(task) + 'd old'"></span>
+                          <span x-text="(task.sessions?.length || 0) + ' sessions'"></span>
+                          <span x-text="(task.comments?.length || 0) + ' comments'"></span>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <button @click="startSession(task)" :disabled="activeSession" class="btn btn-ghost btn-circle btn-sm text-success" title="Start Session"><ion-icon name="play-outline"></ion-icon></button>
+                        <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-sm" title="Details"><ion-icon name="create-outline"></ion-icon></button>
+                        <div class="dropdown dropdown-end">
+                          <div tabindex="0" role="button" class="btn btn-ghost btn-circle btn-sm"><ion-icon name="ellipsis-vertical-outline"></ion-icon></div>
+                          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow-lg">
+                            <template x-if="task.skipState">
+                              <li><a @click="clearSkipState(task)" class="gap-2"><ion-icon name="arrow-undo-outline"></ion-icon> Clear skip</a></li>
+                            </template>
+                            <li><a @click="skipTaskForNow(task)" class="gap-2"><ion-icon name="play-skip-forward-outline"></ion-icon> Skip for now</a></li>
+                            <li><a @click="openSkipForDayModal(task)" class="gap-2"><ion-icon name="calendar-outline"></ion-icon> Skip for day</a></li>
+                            <li><a @click="completeTask(task)" class="gap-2 text-success"><ion-icon name="checkmark-circle-outline"></ion-icon> Complete</a></li>
+                            <li><a @click="moveTaskToBacklog(task)" class="gap-2"><ion-icon name="clipboard-outline"></ion-icon> To Backlog</a></li>
+                            <li><a @click="cancelTask(task)" class="gap-2 text-error"><ion-icon name="trash-outline"></ion-icon> Cancel</a></li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </template>
-            <template x-if="getSprintTasks(selectedSprint).length === 0">
-              <div class="text-center py-12 text-gray-500">
-                <ion-icon name="mail-open-outline" class="text-4xl mb-2"></ion-icon>
-                <p>No tasks in this sprint</p>
-                <p class="text-sm">Move tasks from the backlog or create new ones</p>
-              </div>
-            </template>
+              </template>
+              <template x-if="getSprintTasks(selectedSprint).length === 0">
+                <div class="text-center py-12 opacity-60">
+                  <ion-icon name="mail-open-outline" class="text-4xl mb-2"></ion-icon>
+                  <p>No tasks in this sprint</p>
+                  <p class="text-sm">Move tasks from the backlog or create new ones</p>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </template>
     </div>
     
     <!-- ==================== BACKLOG VIEW ==================== -->
-    <div x-show="currentView === 'backlog'" class="bg-white rounded-lg shadow-sm p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-bold text-gray-800">Backlog</h2>
-        <span class="text-sm text-gray-500" x-text="filteredBacklogTasks.length + ' tasks'"></span>
-      </div>
-      <div class="space-y-3">
-        <template x-for="task in filteredBacklogTasks" :key="task.id">
-          <div class="task-card bg-gray-50 rounded-lg p-4 border-l-4"
-               :style="{ borderLeftColor: getTaskPrimaryTag(task)?.color || '#ccc' }">
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1 flex-wrap">
-                  <h3 class="font-medium text-gray-800" x-text="task.title"></h3>
-                  <template x-if="task.parentId">
-                    <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
-                  </template>
-                </div>
-                <template x-if="task.description">
-                  <p class="text-sm text-gray-600 mb-2 line-clamp-2" x-text="task.description"></p>
-                </template>
-                <div class="flex flex-wrap gap-1.5 mb-2">
-                  <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
-                    <span class="text-xs px-2 py-0.5 rounded-full"
-                          :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
-                      <span x-text="getTagById(tagId)?.icon"></span>
-                      <span x-text="getTagById(tagId)?.name"></span>
-                      <span class="font-bold" x-text="points + 'pt'"></span>
-                    </span>
-                  </template>
-                </div>
-                <div class="flex items-center gap-3 text-xs text-gray-500">
-                  <span x-text="getTaskAge(task) + 'd old'"></span>
-                  <span x-text="'In ' + (task.sprintHistory?.length || 0) + ' sprints'"></span>
-                </div>
-              </div>
-              <div class="flex items-center gap-1">
-                <div class="relative" x-data="{ open: false }">
-                  <button @click="open = !open" class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 flex items-center gap-1">
-                    Move <ion-icon name="chevron-down-outline"></ion-icon>
-                  </button>
-                  <div x-show="open" @click.away="open = false" x-transition
-                       class="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
-                    <template x-for="(sprint, index) in sprints" :key="sprint.id">
-                      <button @click="moveTaskToSprint(task, sprint); open = false"
-                              class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2">
-                        <ion-icon :name="getSprintIcon(index)"></ion-icon>
-                        <span x-text="getSprintLabel(index)"></span>
-                      </button>
+    <div x-show="currentView === 'backlog'" class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="card-title">Backlog</h2>
+          <span class="badge badge-ghost" x-text="filteredBacklogTasks.length + ' tasks'"></span>
+        </div>
+        <div class="space-y-3">
+          <template x-for="task in filteredBacklogTasks" :key="task.id">
+            <div class="card bg-base-200 border-l-4" :style="{ borderLeftColor: getTaskPrimaryTag(task)?.color || 'oklch(var(--bc)/0.2)' }">
+              <div class="card-body p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 class="font-medium" x-text="task.title"></h3>
+                      <template x-if="task.parentId">
+                        <span class="badge badge-secondary badge-sm gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
+                      </template>
+                    </div>
+                    <template x-if="task.description">
+                      <p class="text-sm opacity-70 mb-2 line-clamp-2" x-text="task.description"></p>
                     </template>
+                    <div class="flex flex-wrap gap-1.5 mb-2">
+                      <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                        <span class="badge badge-sm" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
+                          <span x-text="getTagById(tagId)?.icon"></span>
+                          <span x-text="getTagById(tagId)?.name"></span>
+                          <span class="font-bold" x-text="points + 'pt'"></span>
+                        </span>
+                      </template>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs opacity-60">
+                      <span x-text="getTaskAge(task) + 'd old'"></span>
+                      <span x-text="'In ' + (task.sprintHistory?.length || 0) + ' sprints'"></span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <div class="dropdown dropdown-end">
+                      <div tabindex="0" role="button" class="btn btn-primary btn-sm gap-1">Move <ion-icon name="chevron-down-outline"></ion-icon></div>
+                      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-20 w-48 p-2 shadow-lg">
+                        <template x-for="(sprint, index) in sprints" :key="sprint.id">
+                          <li><a @click="moveTaskToSprint(task, sprint)" class="gap-2"><ion-icon :name="getSprintIcon(index)"></ion-icon> <span x-text="getSprintLabel(index)"></span></a></li>
+                        </template>
+                      </ul>
+                    </div>
+                    <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-sm" title="Details"><ion-icon name="create-outline"></ion-icon></button>
+                    <button @click="cancelTask(task)" class="btn btn-ghost btn-circle btn-sm text-error" title="Cancel"><ion-icon name="trash-outline"></ion-icon></button>
                   </div>
                 </div>
-                <button @click="openTaskDetail(task)" class="p-2 hover:bg-gray-100 rounded-lg" title="Details"><ion-icon name="create-outline"></ion-icon></button>
-                <button @click="cancelTask(task)" class="p-2 hover:bg-gray-100 rounded-lg text-red-500" title="Cancel"><ion-icon name="trash-outline"></ion-icon></button>
               </div>
             </div>
-          </div>
-        </template>
-        <template x-if="filteredBacklogTasks.length === 0">
-          <div class="text-center py-12 text-gray-500">
-            <ion-icon name="trophy-outline" class="text-4xl mb-2"></ion-icon>
-            <p>Backlog is empty!</p>
-            <p class="text-sm">Create new tasks or check your filters</p>
-          </div>
-        </template>
-      </div>
-    </div>
-    
-    <!-- ==================== RECURRING VIEW ==================== -->
-    <div x-show="currentView === 'recurring'" class="bg-white rounded-lg shadow-sm p-6">
-      <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
-        <div>
-          <h2 class="text-xl font-bold text-gray-800">Recurring Templates</h2>
-          <p class="text-sm text-gray-500">Templates spawn task instances based on their schedule</p>
+          </template>
+          <template x-if="filteredBacklogTasks.length === 0">
+            <div class="text-center py-12 opacity-60">
+              <ion-icon name="trophy-outline" class="text-4xl mb-2"></ion-icon>
+              <p>Backlog is empty!</p>
+              <p class="text-sm">Create new tasks or check your filters</p>
+            </div>
+          </template>
         </div>
-        <button @click="showCreateRecurringModal = true" 
-                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium">
-          + New Recurring
-        </button>
-      </div>
-      <div class="space-y-3">
-        <template x-for="template in recurringTemplates" :key="template.id">
-          <div class="task-card bg-gray-50 rounded-lg p-4 border-l-4 border-l-purple-400">
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <ion-icon name="repeat-outline" class="text-lg text-purple-600"></ion-icon>
-                  <h3 class="font-medium text-gray-800" x-text="template.title"></h3>
-                </div>
-                <p class="text-sm text-purple-600 mb-2" x-text="describeRRule(template.recurrence)"></p>
-                <div class="flex flex-wrap gap-1.5 mb-2">
-                  <template x-for="(points, tagId) in template.tagPoints" :key="tagId">
-                    <span class="text-xs px-2 py-0.5 rounded-full"
-                          :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
-                      <span x-text="getTagById(tagId)?.icon"></span>
-                      <span x-text="getTagById(tagId)?.name"></span>
-                      <span class="font-bold" x-text="points + 'pt'"></span>
-                    </span>
-                  </template>
-                </div>
-                <div class="text-xs text-gray-500">
-                  Next: <span x-text="formatDate(getNextOccurrence(template))"></span>
-                </div>
-              </div>
-              <div class="flex items-center gap-1">
-                <button @click="spawnRecurringInstance(template)" 
-                        class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200">
-                  Spawn Now
-                </button>
-                <button @click="openTaskDetail(template)" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="create-outline"></ion-icon></button>
-                <button @click="cancelTask(template)" class="p-2 hover:bg-gray-100 rounded-lg text-red-500"><ion-icon name="trash-outline"></ion-icon></button>
-              </div>
-            </div>
-          </div>
-        </template>
-        <template x-if="recurringTemplates.length === 0">
-          <div class="text-center py-12 text-gray-500">
-            <ion-icon name="repeat-outline" class="text-4xl mb-2"></ion-icon>
-            <p>No recurring templates</p>
-            <p class="text-sm">Create recurring tasks for regular activities</p>
-          </div>
-        </template>
       </div>
     </div>
-    
+
+    <!-- ==================== RECURRING VIEW ==================== -->
+    <div x-show="currentView === 'recurring'" class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
+          <div>
+            <h2 class="card-title">Recurring Templates</h2>
+            <p class="text-sm opacity-70">Templates spawn task instances based on their schedule</p>
+          </div>
+          <button @click="showCreateTaskModal = true" class="btn btn-secondary btn-sm gap-1">
+            <ion-icon name="add-outline"></ion-icon> New Recurring
+          </button>
+        <div class="space-y-3">
+          <template x-for="template in recurringTemplates" :key="template.id">
+            <div class="card bg-base-200 border-l-4 border-l-secondary">
+              <div class="card-body p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <ion-icon name="repeat-outline" class="text-lg text-secondary"></ion-icon>
+                      <h3 class="font-medium" x-text="template.title"></h3>
+                    </div>
+                    <p class="text-sm text-secondary mb-2" x-text="describeRRule(template.recurrence)"></p>
+                    <div class="flex flex-wrap gap-1.5 mb-2">
+                      <template x-for="(points, tagId) in template.tagPoints" :key="tagId">
+                        <span class="badge badge-sm" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
+                          <span x-text="getTagById(tagId)?.icon"></span>
+                          <span x-text="getTagById(tagId)?.name"></span>
+                          <span class="font-bold" x-text="points + 'pt'"></span>
+                        </span>
+                      </template>
+                    </div>
+                    <div class="text-xs opacity-60">
+                      Next: <span x-text="formatDate(getNextOccurrence(template))"></span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <button @click="spawnRecurringInstance(template)" class="btn btn-secondary btn-sm">Spawn Now</button>
+                    <button @click="openTaskDetail(template)" class="btn btn-ghost btn-circle btn-sm"><ion-icon name="create-outline"></ion-icon></button>
+                    <button @click="cancelTask(template)" class="btn btn-ghost btn-circle btn-sm text-error"><ion-icon name="trash-outline"></ion-icon></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template x-if="recurringTemplates.length === 0">
+            <div class="text-center py-12 opacity-60">
+              <ion-icon name="repeat-outline" class="text-4xl mb-2"></ion-icon>
+              <p>No recurring templates</p>
+              <p class="text-sm">Create recurring tasks for regular activities</p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== COMPLETED VIEW ==================== -->
-    <div x-show="currentView === 'completed'" class="bg-white rounded-lg shadow-sm p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-bold text-gray-800">Completed & Canceled</h2>
-        <span class="text-sm text-gray-500" x-text="completedTasks.length + ' tasks'"></span>
-      </div>
-      <div class="space-y-3">
-        <template x-for="task in completedTasks" :key="task.id">
-          <div class="task-card bg-gray-50 rounded-lg p-4 border-l-4"
-               :class="task.status === 'completed' ? 'border-l-green-400' : 'border-l-red-400'">
-            <div class="flex items-start justify-between gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <ion-icon :name="task.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'"></ion-icon>
-                  <h3 class="font-medium text-gray-500 line-through" x-text="task.title"></h3>
-                </div>
-                <div class="flex flex-wrap gap-1.5">
-                  <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
-                    <span class="text-xs px-2 py-0.5 rounded-full opacity-60"
-                          :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
-                      <span x-text="getTagById(tagId)?.icon"></span>
-                      <span class="font-bold" x-text="points + 'pt'"></span>
-                    </span>
-                  </template>
+    <div x-show="currentView === 'completed'" class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="card-title">Completed & Canceled</h2>
+          <span class="badge badge-ghost" x-text="completedTasks.length + ' tasks'"></span>
+        </div>
+        <div class="space-y-3">
+          <template x-for="task in completedTasks" :key="task.id">
+            <div class="card bg-base-200 border-l-4" :class="task.status === 'completed' ? 'border-l-success' : 'border-l-error'">
+              <div class="card-body p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <ion-icon :name="task.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'" :class="task.status === 'completed' ? 'text-success' : 'text-error'"></ion-icon>
+                      <h3 class="font-medium opacity-50 line-through" x-text="task.title"></h3>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                      <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                        <span class="badge badge-sm opacity-60" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
+                          <span x-text="getTagById(tagId)?.icon"></span>
+                          <span class="font-bold" x-text="points + 'pt'"></span>
+                        </span>
+                      </template>
+                    </div>
+                  </div>
+                  <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-sm"><ion-icon name="create-outline"></ion-icon></button>
                 </div>
               </div>
-              <button @click="openTaskDetail(task)" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="create-outline"></ion-icon></button>
             </div>
-          </div>
-        </template>
-        <template x-if="completedTasks.length === 0">
-          <div class="text-center py-12 text-gray-500">
-            <ion-icon name="hourglass-outline" class="text-4xl mb-2"></ion-icon>
-            <p>No completed tasks yet</p>
-          </div>
-        </template>
+          </template>
+          <template x-if="completedTasks.length === 0">
+            <div class="text-center py-12 opacity-60">
+              <ion-icon name="hourglass-outline" class="text-4xl mb-2"></ion-icon>
+              <p>No completed tasks yet</p>
+            </div>
+          </template>
+        </div>
       </div>
     </div>
-    
+
   </div>
   
   <!-- ==================== MODALS ==================== -->
-  
+
   <!-- Create Task Modal -->
-  <div x-show="showCreateTaskModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" @click.away="showCreateTaskModal = false">
-      <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Create New Task</h2>
-        <form @submit.prevent="createTask()">
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-              <input type="text" x-model="newTask.title" required class="w-full border rounded-lg px-3 py-2" placeholder="What needs to be done?">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea x-model="newTask.description" rows="3" class="w-full border rounded-lg px-3 py-2" placeholder="Additional details"></textarea>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Points per Tag *</label>
-              <div class="space-y-2">
-                <template x-for="tag in tags" :key="tag.id">
-                  <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-2 w-32" :style="{ color: tag.color }">
-                      <span x-text="tag.icon"></span>
-                      <span x-text="tag.name"></span>
-                    </div>
-                    <select x-model="newTask.tagPoints[tag.id]" class="border rounded-lg px-3 py-1">
-                      <option value="">-</option>
-                      <template x-for="pt in FIBONACCI_POINTS" :key="pt">
-                        <option :value="pt" x-text="pt + ' pt'"></option>
-                      </template>
-                    </select>
+  <dialog x-ref="createTaskModal" class="modal" :class="{'modal-open': showCreateTaskModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCreateTaskModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Create New Task</h3>
+      <form @submit.prevent="createTask()">
+        <div class="space-y-4">
+          <div class="form-control">
+            <label class="label"><span class="label-text">Title *</span></label>
+            <input type="text" x-model="newTask.title" required class="input input-bordered w-full" placeholder="What needs to be done?">
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Description</span></label>
+            <textarea x-model="newTask.description" rows="3" class="textarea textarea-bordered w-full" placeholder="Additional details"></textarea>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Points per Tag *</span></label>
+            <div class="space-y-2">
+              <template x-for="tag in tags" :key="tag.id">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-2 w-32" :style="{ color: tag.color }">
+                    <span x-text="tag.icon"></span>
+                    <span x-text="tag.name"></span>
                   </div>
-                </template>
-              </div>
-              <p class="text-xs text-gray-500 mt-1">Select at least one tag with points</p>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="showCreateTaskModal = false" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create Task</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Create Recurring Task Modal -->
-  <div x-show="showCreateRecurringModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" @click.away="showCreateRecurringModal = false">
-      <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Create Recurring Task</h2>
-        <form @submit.prevent="createRecurringTask()">
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-              <input type="text" x-model="newRecurring.title" required class="w-full border rounded-lg px-3 py-2" placeholder="Recurring task name">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea x-model="newRecurring.description" rows="2" class="w-full border rounded-lg px-3 py-2" placeholder="Additional details"></textarea>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Recurrence Pattern</label>
-              <select x-model="newRecurring.recurrencePreset" class="w-full border rounded-lg px-3 py-2">
-                <option value="FREQ=DAILY">Daily</option>
-                <option value="FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR">Weekdays</option>
-                <option value="FREQ=WEEKLY">Weekly</option>
-                <option value="FREQ=WEEKLY;BYDAY=MO,WE,FR">Mon, Wed, Fri</option>
-                <option value="FREQ=WEEKLY;BYDAY=TU,TH">Tue, Thu</option>
-                <option value="FREQ=MONTHLY">Monthly</option>
-                <option value="custom">Custom RRULE...</option>
-              </select>
-              <template x-if="newRecurring.recurrencePreset === 'custom'">
-                <input type="text" x-model="newRecurring.customRRule" class="w-full border rounded-lg px-3 py-2 mt-2" placeholder="FREQ=WEEKLY;BYDAY=MO,WE,FR">
+                  <select x-model="newTask.tagPoints[tag.id]" class="select select-bordered select-sm">
+                    <option value="">-</option>
+                    <template x-for="pt in FIBONACCI_POINTS" :key="pt">
+                      <option :value="pt" x-text="pt + ' pt'"></option>
+                    </template>
+                  </select>
+                </div>
               </template>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Points per Tag *</label>
-              <div class="space-y-2">
-                <template x-for="tag in tags" :key="tag.id">
-                  <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-2 w-32" :style="{ color: tag.color }">
-                      <span x-text="tag.icon"></span>
-                      <span x-text="tag.name"></span>
-                    </div>
-                    <select x-model="newRecurring.tagPoints[tag.id]" class="border rounded-lg px-3 py-1">
-                      <option value="">-</option>
-                      <template x-for="pt in FIBONACCI_POINTS" :key="pt">
-                        <option :value="pt" x-text="pt + ' pt'"></option>
-                      </template>
-                    </select>
-                  </div>
-                </template>
-              </div>
+            <label class="label"><span class="label-text-alt">Select at least one tag with points</span></label>
+          </div>
+          <!-- Recurrence preview -->
+          <template x-if="parseRecurrence(newTask.title).valid">
+            <div class="alert alert-info py-2">
+              <ion-icon name="repeat-outline"></ion-icon>
+              <span>Repeats <span x-text="parseRecurrence(newTask.title).description"></span></span>
             </div>
-          </div>
-          <div class="flex justify-end gap-3 mt-6">
-            <button type="button" @click="showCreateRecurringModal = false" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Create</button>
-          </div>
-        </form>
-      </div>
+          </template>
+        </div>
+        <div class="modal-action">
+          <button type="button" @click="showCreateTaskModal = false" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary" x-text="parseRecurrence(newTask.title).valid ? 'Create Recurring Task' : 'Create Task'"></button>
+        </div>
+      </form>
     </div>
-  </div>
-  
+    <form method="dialog" class="modal-backdrop" @click="showCreateTaskModal = false"><button>close</button></form>
+  </dialog>
+
   <!-- Task Detail Modal -->
-  <div x-show="showTaskDetailModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" @click.away="showTaskDetailModal = false; saveTaskDetail()">
+  <dialog x-ref="taskDetailModal" class="modal" :class="{'modal-open': showTaskDetailModal}">
+    <div class="modal-box max-w-2xl">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showTaskDetailModal = false; saveTaskDetail()">✕</button>
+      </form>
       <template x-if="selectedTask">
-        <div class="p-6">
-          <div class="flex items-start justify-between mb-4">
+        <div>
+          <div class="flex items-start gap-2 mb-4">
+            <ion-icon x-show="selectedTask.status === 'completed'" name="checkmark-circle-outline" class="text-success text-xl mt-1"></ion-icon>
+            <ion-icon x-show="selectedTask.status === 'canceled'" name="close-circle-outline" class="text-error text-xl mt-1"></ion-icon>
+            <ion-icon x-show="selectedTask.recurrence" name="repeat-outline" class="text-secondary text-xl mt-1"></ion-icon>
             <div class="flex-1">
-              <div class="flex items-center gap-2 mb-1">
-                <ion-icon x-show="selectedTask.status === 'completed'" name="checkmark-circle-outline" class="text-green-500"></ion-icon>
-                <ion-icon x-show="selectedTask.status === 'canceled'" name="close-circle-outline" class="text-red-500"></ion-icon>
-                <ion-icon x-show="selectedTask.recurrence" name="repeat-outline" class="text-purple-500"></ion-icon>
-                <input type="text" x-model="selectedTask.title" @change="saveTaskDetail()"
-                       class="text-xl font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none w-full"
-                       :disabled="selectedTask.status !== 'active'">
-              </div>
-              <div class="flex items-center gap-2 text-sm text-gray-500">
+              <input type="text" x-model="selectedTask.title" @change="saveTaskDetail()"
+                     class="input input-ghost text-xl font-bold w-full p-0 h-auto focus:bg-base-200"
+                     :disabled="selectedTask.status !== 'active'">
+              <div class="flex items-center gap-2 text-sm opacity-60 mt-1">
                 <span x-text="'Created ' + formatDate(new Date(selectedTask.createdAt))"></span>
                 <span>•</span>
                 <span x-text="getTaskAge(selectedTask) + ' days old'"></span>
               </div>
             </div>
-            <button @click="showTaskDetailModal = false; saveTaskDetail()" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
           </div>
-          
+
           <!-- Description -->
-          <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <div class="form-control mb-6">
+            <label class="label"><span class="label-text">Description</span></label>
             <textarea x-model="selectedTask.description" @change="saveTaskDetail()" rows="3"
-                      class="w-full border rounded-lg px-3 py-2" placeholder="Add description..."
+                      class="textarea textarea-bordered w-full" placeholder="Add description..."
                       :disabled="selectedTask.status !== 'active'"></textarea>
           </div>
-          
+
           <!-- Tags & Points -->
           <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Tags & Points</label>
+            <label class="label"><span class="label-text">Tags & Points</span></label>
             <div class="flex flex-wrap gap-2">
               <template x-for="(points, tagId) in selectedTask.tagPoints" :key="tagId">
-                <div class="flex items-center gap-1 px-3 py-1 rounded-full"
-                     :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                <div class="badge badge-lg gap-1" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
                   <span x-text="getTagById(tagId)?.icon"></span>
                   <span x-text="getTagById(tagId)?.name"></span>
                   <select x-model="selectedTask.tagPoints[tagId]" @change="saveTaskDetail()"
-                          class="bg-transparent border-none text-sm font-bold w-16"
+                          class="bg-transparent border-none text-sm font-bold w-14"
                           :disabled="selectedTask.status !== 'active'">
                     <template x-for="pt in FIBONACCI_POINTS" :key="pt">
                       <option :value="pt" x-text="pt + 'pt'"></option>
@@ -641,75 +569,75 @@
           
           <!-- Recurrence Info -->
           <template x-if="selectedTask.recurrence">
-            <div class="mb-6 p-4 bg-purple-50 rounded-lg">
-              <label class="block text-sm font-medium text-purple-700 mb-1 flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> Recurrence Pattern</label>
-              <p class="text-purple-600" x-text="describeRRule(selectedTask.recurrence)"></p>
-              <p class="text-xs text-purple-500 mt-1">Next: <span x-text="formatDate(getNextOccurrence(selectedTask))"></span></p>
+            <div class="mb-6 p-4 bg-secondary/10 rounded-lg">
+              <label class="block text-sm font-medium text-secondary mb-1 flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> Recurrence Pattern</label>
+              <p class="text-secondary" x-text="describeRRule(selectedTask.recurrence)"></p>
+              <p class="text-xs opacity-70 mt-1">Next: <span x-text="formatDate(getNextOccurrence(selectedTask))"></span></p>
             </div>
           </template>
           
           <!-- Sessions -->
           <div class="mb-6">
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700">Focus Sessions</label>
+              <label class="label-text font-medium">Focus Sessions</label>
               <button @click="startSession(selectedTask); showTaskDetailModal = false"
                       :disabled="activeSession || selectedTask.status !== 'active'"
-                      class="text-sm text-indigo-600 hover:underline disabled:opacity-50">+ Start Session</button>
+                      class="btn btn-ghost btn-xs text-primary">+ Start Session</button>
             </div>
             <div class="space-y-2 max-h-40 overflow-y-auto">
               <template x-for="session in (selectedTask.sessions || []).slice().reverse()" :key="session.id">
-                <div class="bg-gray-50 rounded-lg p-3 text-sm">
+                <div class="bg-base-200 rounded-lg p-3 text-sm">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <ion-icon :class="{'text-green-500': session.status === 'completed', 'text-red-500': session.status === 'abandoned', 'text-blue-500': session.status === 'in_progress'}"
+                      <ion-icon :class="{'text-success': session.status === 'completed', 'text-error': session.status === 'abandoned', 'text-info': session.status === 'in_progress'}"
                             :name="session.status === 'completed' ? 'checkmark-outline' : session.status === 'abandoned' ? 'close-outline' : 'play-outline'"></ion-icon>
                       <span x-text="formatDate(new Date(session.startedAt))"></span>
                       <template x-if="session.endedAt">
-                        <span class="text-gray-400" x-text="'(' + formatSessionTime(Math.floor((new Date(session.endedAt) - new Date(session.startedAt)) / 1000)) + ')'"></span>
+                        <span class="opacity-60" x-text="'(' + formatSessionTime(Math.floor((new Date(session.endedAt) - new Date(session.startedAt)) / 1000)) + ')'"></span>
                       </template>
                     </div>
                     <template x-if="session.focusLevel">
-                      <span class="px-2 py-0.5 rounded text-xs"
-                            :class="{'bg-green-100 text-green-700': session.focusLevel === 'focused', 'bg-yellow-100 text-yellow-700': session.focusLevel === 'neutral', 'bg-red-100 text-red-700': session.focusLevel === 'distracted'}"
+                      <span class="badge badge-sm"
+                            :class="{'badge-success': session.focusLevel === 'focused', 'badge-warning': session.focusLevel === 'neutral', 'badge-error': session.focusLevel === 'distracted'}"
                             x-text="session.focusLevel"></span>
                     </template>
                   </div>
                 </div>
               </template>
               <template x-if="!selectedTask.sessions?.length">
-                <p class="text-sm text-gray-500 italic">No sessions yet</p>
+                <p class="text-sm opacity-50 italic">No sessions yet</p>
               </template>
             </div>
           </div>
           
           <!-- Comments -->
           <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+            <label class="label-text font-medium mb-2 block">Comments</label>
             <div class="space-y-2 mb-3 max-h-48 overflow-y-auto">
               <template x-for="comment in (selectedTask.comments || [])" :key="comment.id">
-                <div class="bg-gray-50 rounded-lg p-3" :class="comment.skipJustification ? 'border-l-4 border-l-yellow-400' : ''">
+                <div class="bg-base-200 rounded-lg p-3" :class="comment.skipJustification ? 'border-l-4 border-l-warning' : ''">
                   <div class="flex items-start justify-between">
                     <div class="flex-1">
                       <template x-if="comment.skipJustification">
-                        <span class="text-xs bg-yellow-100 text-yellow-700 px-1 rounded mb-1 inline-block">Skip Justification</span>
+                        <span class="badge badge-warning badge-sm mb-1">Skip Justification</span>
                       </template>
-                      <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="comment.content"></p>
-                      <p class="text-xs text-gray-400 mt-1" x-text="formatDate(new Date(comment.createdAt))"></p>
+                      <p class="text-sm whitespace-pre-wrap" x-text="comment.content"></p>
+                      <p class="text-xs opacity-50 mt-1" x-text="formatDate(new Date(comment.createdAt))"></p>
                     </div>
-                    <button @click="deleteComment(selectedTask, comment)" class="text-red-400 hover:text-red-600 text-sm"><ion-icon name="trash-outline"></ion-icon></button>
+                    <button @click="deleteComment(selectedTask, comment)" class="btn btn-ghost btn-xs text-error"><ion-icon name="trash-outline"></ion-icon></button>
                   </div>
                 </div>
               </template>
             </div>
             <div class="flex gap-2">
               <input type="text" x-model="newCommentContent" @keyup.enter="addComment(selectedTask)"
-                     class="flex-1 border rounded-lg px-3 py-2 text-sm" placeholder="Add a comment...">
-              <button @click="addComment(selectedTask)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">Add</button>
+                     class="input input-bordered input-sm flex-1" placeholder="Add a comment...">
+              <button @click="addComment(selectedTask)" class="btn btn-ghost btn-sm">Add</button>
             </div>
           </div>
           
           <!-- Location & Parent -->
-          <div class="text-sm text-gray-600">
+          <div class="text-sm opacity-70">
             <p class="flex items-center gap-1">Location: <span class="font-medium flex items-center gap-1"><ion-icon :name="selectedTask.location.type === 'backlog' ? 'clipboard-outline' : 'calendar-outline'"></ion-icon> <span x-text="selectedTask.location.type === 'backlog' ? 'Backlog' : 'Sprint'"></span></span></p>
             <template x-if="selectedTask.parentId">
               <p class="mt-1 flex items-center gap-1">
@@ -721,259 +649,272 @@
         </div>
       </template>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop" @click="showTaskDetailModal = false; saveTaskDetail()"><button>close</button></form>
+  </dialog>
   
   <!-- Skip For Day Modal -->
-  <div x-show="showSkipForDayModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4" @click.away="showSkipForDayModal = false">
-      <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Skip for Day</h2>
-        <p class="text-gray-600 mb-4">This task will be hidden until tomorrow. Please provide a justification.</p>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Justification *</label>
-          <textarea x-model="skipJustification" required rows="3" class="w-full border rounded-lg px-3 py-2" placeholder="Why are you skipping this task?"></textarea>
-        </div>
-        <div class="flex justify-end gap-3">
-          <button @click="showSkipForDayModal = false" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-          <button @click="confirmSkipForDay()" :disabled="!skipJustification.trim()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50">Skip Task</button>
-        </div>
+  <dialog class="modal" :class="{'modal-open': showSkipForDayModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showSkipForDayModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-2">Skip for Day</h3>
+      <p class="opacity-70 mb-4">This task will be hidden until tomorrow. Please provide a justification.</p>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Justification *</span></label>
+        <textarea x-model="skipJustification" required rows="3" class="textarea textarea-bordered" placeholder="Why are you skipping this task?"></textarea>
+      </div>
+      <div class="modal-action">
+        <button @click="showSkipForDayModal = false" class="btn btn-ghost">Cancel</button>
+        <button @click="confirmSkipForDay()" :disabled="!skipJustification.trim()" class="btn btn-warning">Skip Task</button>
       </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop" @click="showSkipForDayModal = false"><button>close</button></form>
+  </dialog>
   
   <!-- Complete Session Modal -->
-  <div x-show="showCompleteSessionModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4" @click.away="showCompleteSessionModal = false">
-      <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Complete Session</h2>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">How focused were you?</label>
-          <div class="flex gap-2">
-            <button @click="sessionFocusLevel = 'distracted'" :class="sessionFocusLevel === 'distracted' ? 'ring-2 ring-red-500' : ''"
-                    class="flex-1 p-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 flex items-center justify-center gap-1"><ion-icon name="sad-outline"></ion-icon> Distracted</button>
-            <button @click="sessionFocusLevel = 'neutral'" :class="sessionFocusLevel === 'neutral' ? 'ring-2 ring-yellow-500' : ''"
-                    class="flex-1 p-3 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 flex items-center justify-center gap-1"><ion-icon name="ellipse-outline"></ion-icon> Neutral</button>
-            <button @click="sessionFocusLevel = 'focused'" :class="sessionFocusLevel === 'focused' ? 'ring-2 ring-green-500' : ''"
-                    class="flex-1 p-3 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 flex items-center justify-center gap-1"><ion-icon name="radio-button-on-outline"></ion-icon> Focused</button>
-          </div>
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Session Note (optional)</label>
-          <textarea x-model="sessionNote" rows="2" class="w-full border rounded-lg px-3 py-2" placeholder="What did you accomplish?"></textarea>
-        </div>
-        <div class="mb-4">
-          <label class="flex items-center gap-2">
-            <input type="checkbox" x-model="markTaskComplete" class="rounded">
-            <span class="text-sm text-gray-700">Also mark task as complete</span>
-          </label>
-        </div>
-        <div class="flex justify-end gap-3">
-          <button @click="showCompleteSessionModal = false" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-          <button @click="confirmCompleteSession()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Complete Session</button>
+  <dialog class="modal" :class="{'modal-open': showCompleteSessionModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCompleteSessionModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Complete Session</h3>
+      <div class="mb-4">
+        <label class="label"><span class="label-text">How focused were you?</span></label>
+        <div class="flex gap-2">
+          <button type="button" @click="sessionFocusLevel = 'distracted'"
+                  class="btn btn-sm flex-1" :class="sessionFocusLevel === 'distracted' ? 'btn-error' : 'btn-ghost bg-error/10 text-error'">
+            <ion-icon name="sad-outline"></ion-icon> Distracted
+          </button>
+          <button type="button" @click="sessionFocusLevel = 'neutral'"
+                  class="btn btn-sm flex-1" :class="sessionFocusLevel === 'neutral' ? 'btn-warning' : 'btn-ghost bg-warning/10 text-warning'">
+            <ion-icon name="ellipse-outline"></ion-icon> Neutral
+          </button>
+          <button type="button" @click="sessionFocusLevel = 'focused'"
+                  class="btn btn-sm flex-1" :class="sessionFocusLevel === 'focused' ? 'btn-success' : 'btn-ghost bg-success/10 text-success'">
+            <ion-icon name="radio-button-on-outline"></ion-icon> Focused
+          </button>
         </div>
       </div>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Session Note (optional)</span></label>
+        <textarea x-model="sessionNote" rows="2" class="textarea textarea-bordered" placeholder="What did you accomplish?"></textarea>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label cursor-pointer justify-start gap-2">
+          <input type="checkbox" x-model="markTaskComplete" class="checkbox checkbox-sm">
+          <span class="label-text">Also mark task as complete</span>
+        </label>
+      </div>
+      <div class="modal-action">
+        <button @click="showCompleteSessionModal = false" class="btn btn-ghost">Cancel</button>
+        <button @click="confirmCompleteSession()" class="btn btn-success">Complete Session</button>
+      </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop" @click="showCompleteSessionModal = false"><button>close</button></form>
+  </dialog>
   
   <!-- Sprint Health Modal -->
-  <div x-show="showSprintHealthModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" @click.away="showSprintHealthModal = false">
-      <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Sprint Health Details</h2>
-        <template x-if="selectedSprint">
-          <div class="space-y-4">
-            <template x-for="tag in tags" :key="tag.id">
-              <div class="p-4 rounded-lg"
-                   :class="{'bg-green-50': getTagHealth(selectedSprint, tag.id) === 'on_track', 'bg-yellow-50': getTagHealth(selectedSprint, tag.id) === 'at_risk', 'bg-red-50': getTagHealth(selectedSprint, tag.id) === 'off_track'}">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2">
-                    <span x-text="tag.icon"></span>
-                    <span class="font-medium" x-text="tag.name"></span>
-                  </div>
-                  <span class="px-2 py-0.5 rounded text-sm font-medium"
-                        :class="{'bg-green-200 text-green-800': getTagHealth(selectedSprint, tag.id) === 'on_track', 'bg-yellow-200 text-yellow-800': getTagHealth(selectedSprint, tag.id) === 'at_risk', 'bg-red-200 text-red-800': getTagHealth(selectedSprint, tag.id) === 'off_track'}"
-                        x-text="getTagHealth(selectedSprint, tag.id).replace('_', ' ')"></span>
+  <dialog class="modal" :class="{'modal-open': showSprintHealthModal}">
+    <div class="modal-box max-w-lg">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showSprintHealthModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Sprint Health Details</h3>
+      <template x-if="selectedSprint">
+        <div class="space-y-4">
+          <template x-for="tag in tags" :key="tag.id">
+            <div class="p-4 rounded-lg"
+                 :class="{'bg-success/10': getTagHealth(selectedSprint, tag.id) === 'on_track', 'bg-warning/10': getTagHealth(selectedSprint, tag.id) === 'at_risk', 'bg-error/10': getTagHealth(selectedSprint, tag.id) === 'off_track'}">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span x-text="tag.icon"></span>
+                  <span class="font-medium" x-text="tag.name"></span>
                 </div>
-                <div class="grid grid-cols-2 gap-2 text-sm">
-                  <div><span class="text-gray-500">Assigned:</span> <span class="font-medium" x-text="getSprintPointsForTag(selectedSprint, tag.id) + ' pts'"></span></div>
-                  <div><span class="text-gray-500">Capacity:</span> <span class="font-medium" x-text="getCapacityForTag(selectedSprint, tag.id) + ' pts'"></span></div>
-                  <div><span class="text-gray-500">Burn rate:</span> <span class="font-medium" x-text="getBurnRateNeeded(selectedSprint, tag.id).toFixed(1) + ' pts/day'"></span></div>
-                  <div><span class="text-gray-500">Sustainable:</span> <span class="font-medium" x-text="(getCapacityForTag(selectedSprint, tag.id) / 7).toFixed(1) + ' pts/day'"></span></div>
-                </div>
+                <span class="badge"
+                      :class="{'badge-success': getTagHealth(selectedSprint, tag.id) === 'on_track', 'badge-warning': getTagHealth(selectedSprint, tag.id) === 'at_risk', 'badge-error': getTagHealth(selectedSprint, tag.id) === 'off_track'}"
+                      x-text="getTagHealth(selectedSprint, tag.id).replace('_', ' ')"></span>
               </div>
-            </template>
-          </div>
-        </template>
-        <div class="flex justify-end mt-6">
-          <button @click="showSprintHealthModal = false" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Close</button>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <div><span class="opacity-60">Assigned:</span> <span class="font-medium" x-text="getSprintPointsForTag(selectedSprint, tag.id) + ' pts'"></span></div>
+                <div><span class="opacity-60">Capacity:</span> <span class="font-medium" x-text="getCapacityForTag(selectedSprint, tag.id) + ' pts'"></span></div>
+                <div><span class="opacity-60">Burn rate:</span> <span class="font-medium" x-text="getBurnRateNeeded(selectedSprint, tag.id).toFixed(1) + ' pts/day'"></span></div>
+                <div><span class="opacity-60">Sustainable:</span> <span class="font-medium" x-text="(getCapacityForTag(selectedSprint, tag.id) / 7).toFixed(1) + ' pts/day'"></span></div>
+              </div>
+            </div>
+          </template>
         </div>
+      </template>
+      <div class="modal-action">
+        <button @click="showSprintHealthModal = false" class="btn btn-ghost">Close</button>
       </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop" @click="showSprintHealthModal = false"><button>close</button></form>
+  </dialog>
   
   <!-- Capacity Edit Modal -->
-  <div x-show="showCapacityEditModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4" @click.away="showCapacityEditModal = false">
-      <div class="p-6">
-        <h2 class="text-xl font-bold mb-4">Edit Capacity</h2>
-        <template x-if="capacityEditTag">
-          <div>
-            <div class="flex items-center gap-2 mb-4" :style="{ color: capacityEditTag.color }">
-              <span x-text="capacityEditTag.icon" class="text-2xl"></span>
-              <span class="font-medium" x-text="capacityEditTag.name"></span>
+  <dialog class="modal" :class="{'modal-open': showCapacityEditModal}">
+    <div class="modal-box max-w-sm">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCapacityEditModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Edit Capacity</h3>
+      <template x-if="capacityEditTag">
+        <div>
+          <div class="flex items-center gap-2 mb-4" :style="{ color: capacityEditTag.color }">
+            <span x-text="capacityEditTag.icon" class="text-2xl"></span>
+            <span class="font-medium" x-text="capacityEditTag.name"></span>
+          </div>
+          <div class="form-control mb-4">
+            <label class="label"><span class="label-text">Capacity for this sprint</span></label>
+            <input type="number" x-model.number="capacityEditValue" min="1" class="input input-bordered">
+            <label class="label"><span class="label-text-alt">Default: <span x-text="capacityEditTag.defaultCapacity"></span> points</span></label>
+          </div>
+          <div class="modal-action">
+            <button @click="showCapacityEditModal = false" class="btn btn-ghost">Cancel</button>
+            <button @click="saveCapacityOverride()" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </template>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showCapacityEditModal = false"><button>close</button></form>
+  </dialog>
+  
+  <!-- Tags Management Modal -->
+  <dialog class="modal" :class="{'modal-open': showTagsModal}">
+    <div class="modal-box max-w-lg max-h-[90vh]">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showTagsModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Manage Tags</h3>
+      <div class="space-y-3 mb-6">
+        <template x-for="tag in tags" :key="tag.id">
+          <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+            <input type="text" x-model="tag.icon" @change="updateTag(tag)" class="input input-ghost w-12 text-center text-xl p-0">
+            <div class="flex-1">
+              <input type="text" x-model="tag.name" @change="updateTag(tag)" class="input input-ghost font-medium p-0 h-auto w-full" :style="{ color: tag.color }">
+              <div class="flex items-center gap-2 mt-1">
+                <input type="color" x-model="tag.color" @change="updateTag(tag)" class="w-6 h-6 rounded cursor-pointer">
+                <span class="text-xs opacity-60">Cap:</span>
+                <input type="number" x-model.number="tag.defaultCapacity" @change="updateTag(tag)" class="input input-bordered input-xs w-16" min="1">
+              </div>
             </div>
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Capacity for this sprint</label>
-              <input type="number" x-model.number="capacityEditValue" min="1" class="w-full border rounded-lg px-3 py-2">
-              <p class="text-xs text-gray-500 mt-1">Default: <span x-text="capacityEditTag.defaultCapacity"></span> points</p>
-            </div>
-            <div class="flex justify-end gap-3">
-              <button @click="showCapacityEditModal = false" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button @click="saveCapacityOverride()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
-            </div>
+            <button @click="deleteTag(tag)" :disabled="tag.id === 'untagged'" class="btn btn-ghost btn-sm text-error disabled:opacity-30"><ion-icon name="trash-outline"></ion-icon></button>
           </div>
         </template>
       </div>
-    </div>
-  </div>
-  
-  <!-- Tags Management Modal -->
-  <div x-show="showTagsModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" @click.away="showTagsModal = false">
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold">Manage Tags</h2>
-          <button @click="showTagsModal = false" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
-        </div>
-        <div class="space-y-3 mb-6">
-          <template x-for="tag in tags" :key="tag.id">
-            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <input type="text" x-model="tag.icon" @change="updateTag(tag)" class="w-10 text-center text-xl bg-transparent">
-              <div class="flex-1">
-                <input type="text" x-model="tag.name" @change="updateTag(tag)" class="font-medium bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none w-full" :style="{ color: tag.color }">
-                <div class="flex items-center gap-2 mt-1">
-                  <input type="color" x-model="tag.color" @change="updateTag(tag)" class="w-6 h-6 rounded cursor-pointer">
-                  <span class="text-xs text-gray-500">Cap:</span>
-                  <input type="number" x-model.number="tag.defaultCapacity" @change="updateTag(tag)" class="w-16 border rounded px-2 py-1 text-sm" min="1">
-                </div>
-              </div>
-              <button @click="deleteTag(tag)" :disabled="tag.id === 'untagged'" class="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-30"><ion-icon name="trash-outline"></ion-icon></button>
-            </div>
-          </template>
-        </div>
-        <div class="border-t pt-4">
-          <h3 class="font-medium mb-3">Add New Tag</h3>
-          <div class="flex items-center gap-2">
-            <input type="text" x-model="newTagIcon" class="w-12 border rounded-lg px-2 py-2 text-center" placeholder="📌">
-            <input type="text" x-model="newTagName" class="flex-1 border rounded-lg px-3 py-2" placeholder="Tag name">
-            <input type="color" x-model="newTagColor" class="w-10 h-10 rounded cursor-pointer">
-            <input type="number" x-model.number="newTagCapacity" class="w-16 border rounded-lg px-2 py-2" placeholder="Cap" min="1">
-            <button @click="addTag()" :disabled="!newTagName.trim()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">Add</button>
-          </div>
-        </div>
+      <div class="divider"></div>
+      <h4 class="font-medium mb-3">Add New Tag</h4>
+      <div class="flex items-center gap-2 flex-wrap">
+        <input type="text" x-model="newTagIcon" class="input input-bordered w-12 text-center" placeholder="📌">
+        <input type="text" x-model="newTagName" class="input input-bordered flex-1 min-w-32" placeholder="Tag name">
+        <input type="color" x-model="newTagColor" class="w-10 h-10 rounded cursor-pointer">
+        <input type="number" x-model.number="newTagCapacity" class="input input-bordered w-16" placeholder="Cap" min="1">
+        <button @click="addTag()" :disabled="!newTagName.trim()" class="btn btn-primary">Add</button>
       </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop" @click="showTagsModal = false"><button>close</button></form>
+  </dialog>
   
   <!-- Routines Management Modal -->
-  <div x-show="showRoutinesModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" @click.away="showRoutinesModal = false">
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold">Manage Routines</h2>
-          <button @click="showRoutinesModal = false" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
-        </div>
-        <p class="text-sm text-gray-600 mb-4">Routines auto-filter tasks based on time. Higher priority wins when multiple match.</p>
-        <div class="space-y-3 mb-6">
-          <template x-for="routine in routines" :key="routine.id">
-            <div class="p-4 bg-gray-50 rounded-lg">
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-2">
-                    <input type="text" x-model="routine.icon" @change="updateRoutine(routine)" class="w-8 text-center bg-transparent">
-                    <input type="text" x-model="routine.name" @change="updateRoutine(routine)" class="font-medium bg-transparent border-b border-transparent hover:border-gray-300" :style="{ color: routine.color }">
-                    <span class="text-xs text-gray-500">Priority:</span>
-                    <input type="number" x-model.number="routine.priority" @change="updateRoutine(routine)" class="w-12 border rounded px-2 py-0.5 text-sm" min="1" max="10">
-                  </div>
-                  <div class="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <label class="text-xs text-gray-500">Task Filter</label>
-                      <input type="text" x-model="routine.taskFilterExpression" @change="updateRoutine(routine)" class="w-full border rounded px-2 py-1 text-sm" placeholder="hasTag('work')">
-                    </div>
-                    <div>
-                      <label class="text-xs text-gray-500">Activation</label>
-                      <input type="text" x-model="routine.activationExpression" @change="updateRoutine(routine)" class="w-full border rounded px-2 py-1 text-sm" placeholder="isWeekday">
-                    </div>
-                  </div>
+  <dialog class="modal" :class="{'modal-open': showRoutinesModal}">
+    <div class="modal-box max-w-2xl max-h-[90vh]">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showRoutinesModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-2">Manage Routines</h3>
+      <p class="text-sm opacity-70 mb-4">Routines auto-filter tasks based on time. Higher priority wins when multiple match.</p>
+      <div class="space-y-3 mb-6">
+        <template x-for="routine in routines" :key="routine.id">
+          <div class="p-4 bg-base-200 rounded-lg">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <input type="text" x-model="routine.icon" @change="updateRoutine(routine)" class="input input-ghost w-10 text-center p-0">
+                  <input type="text" x-model="routine.name" @change="updateRoutine(routine)" class="input input-ghost font-medium p-0 h-auto" :style="{ color: routine.color }">
+                  <span class="text-xs opacity-60">Priority:</span>
+                  <input type="number" x-model.number="routine.priority" @change="updateRoutine(routine)" class="input input-bordered input-xs w-14" min="1" max="10">
                 </div>
-                <div class="flex items-center gap-1">
-                  <input type="color" x-model="routine.color" @change="updateRoutine(routine)" class="w-8 h-8 rounded cursor-pointer">
-                  <button @click="deleteRoutine(routine)" class="p-2 text-red-500 hover:bg-red-50 rounded-lg"><ion-icon name="trash-outline"></ion-icon></button>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                  <div class="form-control">
+                    <label class="label py-0"><span class="label-text-alt">Task Filter</span></label>
+                    <input type="text" x-model="routine.taskFilterExpression" @change="updateRoutine(routine)" class="input input-bordered input-sm" placeholder="hasTag('work')">
+                  </div>
+                  <div class="form-control">
+                    <label class="label py-0"><span class="label-text-alt">Activation</span></label>
+                    <input type="text" x-model="routine.activationExpression" @change="updateRoutine(routine)" class="input input-bordered input-sm" placeholder="isWeekday">
+                  </div>
                 </div>
               </div>
+              <div class="flex items-center gap-1">
+                <input type="color" x-model="routine.color" @change="updateRoutine(routine)" class="w-8 h-8 rounded cursor-pointer">
+                <button @click="deleteRoutine(routine)" class="btn btn-ghost btn-sm text-error"><ion-icon name="trash-outline"></ion-icon></button>
+              </div>
             </div>
-          </template>
-          <template x-if="routines.length === 0">
-            <p class="text-center text-gray-500 py-4">No routines yet</p>
-          </template>
+          </div>
+        </template>
+        <template x-if="routines.length === 0">
+          <p class="text-center opacity-50 py-4">No routines yet</p>
+        </template>
+      </div>
+      <div class="divider"></div>
+      <h4 class="font-medium mb-3">Add New Routine</h4>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="flex items-center gap-2">
+          <input type="text" x-model="newRoutineIcon" class="input input-bordered w-12 text-center" placeholder="🏠">
+          <input type="text" x-model="newRoutineName" class="input input-bordered flex-1" placeholder="Routine name">
         </div>
-        <div class="border-t pt-4">
-          <h3 class="font-medium mb-3">Add New Routine</h3>
-          <div class="grid grid-cols-2 gap-3 mb-3">
-            <div class="flex items-center gap-2">
-              <input type="text" x-model="newRoutineIcon" class="w-10 border rounded-lg px-2 py-2 text-center" placeholder="🏠">
-              <input type="text" x-model="newRoutineName" class="flex-1 border rounded-lg px-3 py-2" placeholder="Routine name">
-            </div>
-            <div class="flex items-center gap-2">
-              <input type="color" x-model="newRoutineColor" class="w-10 h-10 rounded cursor-pointer">
-              <input type="number" x-model.number="newRoutinePriority" class="w-16 border rounded-lg px-2 py-2" placeholder="Pri" min="1" max="10">
-            </div>
-            <input type="text" x-model="newRoutineFilter" class="border rounded-lg px-3 py-2" placeholder="Task filter (e.g., hasTag('work'))">
-            <input type="text" x-model="newRoutineActivation" class="border rounded-lg px-3 py-2" placeholder="Activation (e.g., isWeekday)">
-          </div>
-          <div class="flex justify-end">
-            <button @click="addRoutine()" :disabled="!newRoutineName.trim()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">Add Routine</button>
-          </div>
-          <div class="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
-            <p class="font-medium text-blue-800 mb-1">Expression Examples:</p>
-            <div class="grid grid-cols-2 gap-2 text-blue-700 text-xs font-mono">
-              <div>hasTag("Work")</div>
-              <div>isWeekday and hour >= 9</div>
-              <div>age > 7</div>
-              <div>dayOfWeek == "mon"</div>
-            </div>
+        <div class="flex items-center gap-2">
+          <input type="color" x-model="newRoutineColor" class="w-10 h-10 rounded cursor-pointer">
+          <input type="number" x-model.number="newRoutinePriority" class="input input-bordered w-16" placeholder="Pri" min="1" max="10">
+        </div>
+        <input type="text" x-model="newRoutineFilter" class="input input-bordered" placeholder="Task filter (e.g., hasTag('work'))">
+        <input type="text" x-model="newRoutineActivation" class="input input-bordered" placeholder="Activation (e.g., isWeekday)">
+      </div>
+      <div class="flex justify-end mb-4">
+        <button @click="addRoutine()" :disabled="!newRoutineName.trim()" class="btn btn-primary">Add Routine</button>
+      </div>
+      <div class="alert alert-info">
+        <div>
+          <p class="font-medium mb-1">Expression Examples:</p>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div>hasTag("Work")</div>
+            <div>isWeekday and hour >= 9</div>
+            <div>age > 7</div>
+            <div>dayOfWeek == "mon"</div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop" @click="showRoutinesModal = false"><button>close</button></form>
+  </dialog>
   
   <!-- Settings Modal -->
-  <div x-show="showSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop" x-transition>
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4" @click.away="showSettingsModal = false">
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold">Settings</h2>
-          <button @click="showSettingsModal = false" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
+  <dialog class="modal" :class="{'modal-open': showSettingsModal}">
+    <div class="modal-box max-w-md">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showSettingsModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Settings</h3>
+      <div class="space-y-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Default Session Duration</span></label>
+          <select x-model.number="settings.defaultSessionDuration" class="select select-bordered w-full">
+            <option value="15">15 minutes</option>
+            <option value="25">25 minutes (Pomodoro)</option>
+            <option value="45">45 minutes</option>
+            <option value="60">60 minutes</option>
+          </select>
         </div>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Default Session Duration</label>
-            <select x-model.number="settings.defaultSessionDuration" class="w-full border rounded-lg px-3 py-2">
-              <option value="15">15 minutes</option>
-              <option value="25">25 minutes (Pomodoro)</option>
-              <option value="45">45 minutes</option>
-              <option value="60">60 minutes</option>
-            </select>
-          </div>
-          <div class="pt-4 border-t">
-            <h3 class="font-medium text-red-600 mb-2">Danger Zone</h3>
-            <button @click="resetAllData()" class="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2"><ion-icon name="trash-outline"></ion-icon> Reset All Data</button>
-          </div>
+        <div class="divider"></div>
+        <div>
+          <h4 class="font-medium text-error mb-2">Danger Zone</h4>
+          <button @click="resetAllData()" class="btn btn-error btn-outline w-full gap-2"><ion-icon name="trash-outline"></ion-icon> Reset All Data</button>
         </div>
       </div>
     </div>
-  </div>
+    <form method="dialog" class="modal-backdrop" @click="showSettingsModal = false"><button>close</button></form>
+  </dialog>
   
   <script>
     function checkMate() {
@@ -987,7 +928,7 @@
         tags: Alpine.$persist([]).as('checkmate_tags'),
         sprints: Alpine.$persist([]).as('checkmate_sprints'),
         routines: Alpine.$persist([]).as('checkmate_routines'),
-        settings: Alpine.$persist({ defaultSessionDuration: 25 }).as('checkmate_settings'),
+        settings: Alpine.$persist({ defaultSessionDuration: 25, theme: 'light' }).as('checkmate_settings'),
         
         // === UI STATE ===
         currentView: 'sprint',
@@ -998,7 +939,6 @@
         
         // === MODAL STATE ===
         showCreateTaskModal: false,
-        showCreateRecurringModal: false,
         showTaskDetailModal: false,
         showSkipForDayModal: false,
         showCompleteSessionModal: false,
@@ -1010,7 +950,6 @@
         
         // === FORM STATE ===
         newTask: { title: '', description: '', tagPoints: {} },
-        newRecurring: { title: '', description: '', tagPoints: {}, recurrencePreset: 'FREQ=DAILY', customRRule: '' },
         selectedTask: null,
         newCommentContent: '',
         skipJustification: '',
@@ -1297,9 +1236,12 @@
             return;
           }
           
+          // Check if title contains recurrence pattern
+          const parsed = this.parseRecurrence(this.newTask.title);
+
           const task = {
             id: this.generateId(),
-            title: this.newTask.title,
+            title: parsed.valid ? parsed.cleanTitle : this.newTask.title,
             description: this.newTask.description || '',
             status: 'active',
             tagPoints: tagPoints,
@@ -1308,50 +1250,15 @@
             comments: [],
             sessions: [],
             skipState: null,
-            recurrence: null,
+            recurrence: parsed.valid ? parsed.rruleString : null,
             parentId: null,
             externalSource: null,
             sprintHistory: []
           };
-          
+
           this.tasks.push(task);
           this.newTask = { title: '', description: '', tagPoints: {} };
           this.showCreateTaskModal = false;
-        },
-        
-        createRecurringTask() {
-          const tagPoints = {};
-          Object.entries(this.newRecurring.tagPoints).forEach(([tagId, points]) => {
-            if (points) tagPoints[tagId] = parseInt(points);
-          });
-          
-          if (Object.keys(tagPoints).length === 0) {
-            alert('Please assign points to at least one tag');
-            return;
-          }
-          
-          const rruleStr = this.newRecurring.recurrencePreset === 'custom' ? this.newRecurring.customRRule : this.newRecurring.recurrencePreset;
-          
-          const task = {
-            id: this.generateId(),
-            title: this.newRecurring.title,
-            description: this.newRecurring.description || '',
-            status: 'active',
-            tagPoints: tagPoints,
-            location: { type: 'backlog' },
-            createdAt: new Date().toISOString(),
-            comments: [],
-            sessions: [],
-            skipState: null,
-            recurrence: rruleStr,
-            parentId: null,
-            externalSource: null,
-            sprintHistory: []
-          };
-          
-          this.tasks.push(task);
-          this.newRecurring = { title: '', description: '', tagPoints: {}, recurrencePreset: 'FREQ=DAILY', customRRule: '' };
-          this.showCreateRecurringModal = false;
         },
         
         updateTask(task) {
@@ -1509,15 +1416,43 @@
         
         describeRRule(rruleStr) {
           if (!rruleStr) return '';
-          const descriptions = {
-            'FREQ=DAILY': 'Every day',
-            'FREQ=WEEKLY': 'Every week',
-            'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR': 'Weekdays',
-            'FREQ=WEEKLY;BYDAY=MO,WE,FR': 'Mon, Wed, Fri',
-            'FREQ=WEEKLY;BYDAY=TU,TH': 'Tue, Thu',
-            'FREQ=MONTHLY': 'Every month'
-          };
-          return descriptions[rruleStr] || rruleStr;
+          try {
+            const rule = rrule.RRule.fromString('RRULE:' + rruleStr);
+            return rule.toText();
+          } catch (e) {
+            return rruleStr;
+          }
+        },
+
+        parseRecurrence(text) {
+          if (!text || !text.trim()) {
+            return { valid: false, rruleString: null, description: '', cleanTitle: text };
+          }
+
+          // Look for "every ..." pattern in the text
+          const everyMatch = text.match(/\bevery\s+.+$/i);
+          if (!everyMatch) {
+            return { valid: false, rruleString: null, description: '', cleanTitle: text };
+          }
+
+          try {
+            // Pass only the "every ..." part to fromText
+            const recurrenceText = everyMatch[0];
+            const rule = rrule.RRule.fromText(recurrenceText);
+            const recurrenceDesc = rule.toText();
+
+            // Remove the recurrence part from title
+            const cleanTitle = text.replace(/\s*\bevery\s+.+$/i, '').trim();
+
+            return {
+              valid: true,
+              rruleString: rule.toString().replace('RRULE:', ''),
+              description: recurrenceDesc,
+              cleanTitle: cleanTitle || text.trim()
+            };
+          } catch (e) {
+            return { valid: false, rruleString: null, description: '', cleanTitle: text };
+          }
         },
         
         // === SPRINT OPERATIONS ===

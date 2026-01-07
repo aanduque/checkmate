@@ -382,42 +382,6 @@
               </div>
             </div>
 
-            <!-- Week After (Sprint 2) -->
-            <div class="kanban-column">
-              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
-                <input type="checkbox" class="md:hidden" />
-                <div class="collapse-title font-medium flex items-center gap-2 py-3">
-                  <ion-icon name="play-skip-forward-outline" class="text-info"></ion-icon>
-                  <span>Week After</span>
-                  <span class="badge badge-sm badge-info" x-text="getKanbanSprintTasks(2).length"></span>
-                </div>
-                <div class="collapse-content p-0">
-                  <div id="kanban-sprint-2" x-bind:data-column="sprints[2]?.id" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
-                    <template x-for="task in getKanbanSprintTasks(2)" :key="task.id">
-                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm">
-                        <div class="flex items-start gap-2">
-                          <div class="w-1 h-full min-h-[2rem] rounded-full flex-shrink-0" :style="{ backgroundColor: getTaskPrimaryTag(task)?.color || '#888' }"></div>
-                          <div class="flex-1 min-w-0">
-                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
-                            <div class="flex items-center gap-1 mt-1 flex-wrap">
-                              <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
-                                <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
-                                  <span x-text="points"></span>
-                                </span>
-                              </template>
-                            </div>
-                          </div>
-                          <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs flex-shrink-0">
-                            <ion-icon name="ellipsis-vertical-outline"></ion-icon>
-                          </button>
-                        </div>
-                      </div>
-                    </template>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
 
@@ -1152,7 +1116,7 @@
           this.kanbanInstances = [];
 
           const self = this;
-          const columnIds = ['kanban-backlog', 'kanban-sprint-0', 'kanban-sprint-1', 'kanban-sprint-2'];
+          const columnIds = ['kanban-backlog', 'kanban-sprint-0', 'kanban-sprint-1'];
 
           columnIds.forEach(columnId => {
             const el = document.getElementById(columnId);

@@ -483,24 +483,23 @@
   </div>
   <!-- End Drawer -->
 
-  <!-- Bottom Dock Navigation -->
-  <div class="dock dock-sm bg-base-100 border-t border-base-300">
-    <button @click="currentView = 'focus'" :class="{ 'dock-active': currentView === 'focus' }" class="dock-item">
-      <ion-icon name="flash-outline" class="text-xl"></ion-icon>
+  <!-- Bottom Dock Navigation (daisyUI dock component) -->
+  <div class="dock dock-sm">
+    <button @click="currentView = 'focus'" :class="{ 'dock-active': currentView === 'focus' }">
+      <ion-icon name="flash-outline" class="size-[1.2em]"></ion-icon>
       <span class="dock-label">Focus</span>
     </button>
-    <button @click="currentView = 'tasks'" :class="{ 'dock-active': currentView === 'tasks' }" class="dock-item">
-      <ion-icon name="list-outline" class="text-xl"></ion-icon>
+    <button @click="currentView = 'tasks'" :class="{ 'dock-active': currentView === 'tasks' }">
+      <ion-icon name="list-outline" class="size-[1.2em]"></ion-icon>
       <span class="dock-label">Tasks</span>
     </button>
-    <button @click="showCreateTaskModal = true" class="dock-item">
-      <ion-icon name="add-circle-outline" class="text-2xl text-primary"></ion-icon>
-      <span class="dock-label">Add</span>
+  </div>
+
+  <!-- FAB (Floating Action Button) for adding tasks -->
+  <div class="fab">
+    <button @click="showCreateTaskModal = true" class="btn btn-primary btn-circle btn-lg shadow-lg">
+      <ion-icon name="add-outline" class="text-2xl"></ion-icon>
     </button>
-    <label for="main-drawer" class="dock-item">
-      <ion-icon name="ellipsis-horizontal-outline" class="text-xl"></ion-icon>
-      <span class="dock-label">More</span>
-    </label>
   </div>
   
   <!-- ==================== MODALS ==================== -->

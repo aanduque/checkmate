@@ -689,6 +689,17 @@
                   <ion-icon name="document-text-outline"></ion-icon>
                   Import Tasks from Text
                 </button>
+                <div class="divider my-1 text-xs opacity-50">Backup</div>
+                <button @click="exportData()" class="btn btn-sm btn-block btn-ghost justify-start gap-2">
+                  <ion-icon name="cloud-download-outline"></ion-icon>
+                  Export Backup
+                </button>
+                <label class="btn btn-sm btn-block btn-ghost justify-start gap-2 cursor-pointer">
+                  <ion-icon name="cloud-upload-outline"></ion-icon>
+                  Import Backup
+                  <input type="file" accept=".json" @change="importData($event)" class="hidden">
+                </label>
+                <div class="divider my-1 text-xs opacity-50">Data</div>
                 <button @click="loadDemoData(); document.getElementById('main-drawer').checked = false" class="btn btn-sm btn-block btn-ghost justify-start gap-2">
                   <ion-icon name="download-outline"></ion-icon>
                   Load Demo Data
@@ -1650,6 +1661,67 @@ Buy groceries"></textarea>
           keys.forEach(key => localStorage.removeItem(key));
           // Reload the page to reinitialize
           window.location.reload();
+        },
+
+        exportData() {
+          const data = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            tasks: this.tasks,
+            tags: this.tags,
+            sprints: this.sprints,
+            routines: this.routines,
+            settings: this.settings
+          };
+
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `checkmate-backup-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        },
+
+        importData(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const data = JSON.parse(e.target.result);
+
+              // Validate required fields
+              if (!data.tasks || !data.tags) {
+                alert('Invalid backup file: missing required data');
+                return;
+              }
+
+              if (!confirm('This will replace ALL your current data with the backup. Continue?')) {
+                return;
+              }
+
+              // Import data
+              this.tasks = data.tasks || [];
+              this.tags = data.tags || [];
+              this.sprints = data.sprints || [];
+              this.routines = data.routines || [];
+              if (data.settings) {
+                this.settings = { ...this.settings, ...data.settings };
+              }
+
+              alert('Data imported successfully!');
+            } catch (err) {
+              alert('Error reading backup file: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+
+          // Reset file input so same file can be selected again
+          event.target.value = '';
         },
 
         loadDemoData() {

@@ -403,15 +403,21 @@
         <!-- Routines Section -->
         <div class="mb-4">
           <p class="text-xs font-medium opacity-50 uppercase mb-2">Active Routine</p>
+          <select x-model="manualRoutineId" class="select select-bordered select-sm w-full">
+            <option value="">Auto (based on time)</option>
+            <template x-for="routine in routines" :key="routine.id">
+              <option :value="routine.id" x-text="routine.icon + ' ' + routine.name"></option>
+            </template>
+          </select>
           <template x-if="activeRoutine">
-            <div class="flex items-center gap-2 p-2 rounded-lg" :style="{ backgroundColor: activeRoutine.color + '15' }">
+            <div class="flex items-center gap-2 p-2 mt-2 rounded-lg" :style="{ backgroundColor: activeRoutine.color + '15' }">
               <span x-text="activeRoutine.icon"></span>
-              <span class="font-medium" x-text="activeRoutine.name" :style="{ color: activeRoutine.color }"></span>
-              <button @click="clearRoutineOverride()" class="btn btn-ghost btn-xs ml-auto" x-show="manualRoutineId">Clear</button>
+              <span class="font-medium text-sm" x-text="activeRoutine.name" :style="{ color: activeRoutine.color }"></span>
+              <span class="text-xs opacity-50 ml-auto" x-text="manualRoutineId ? 'Manual' : 'Auto'"></span>
             </div>
           </template>
-          <template x-if="!activeRoutine">
-            <p class="text-sm opacity-50">No active routine</p>
+          <template x-if="!activeRoutine && !manualRoutineId">
+            <p class="text-sm opacity-50 mt-2">No routine active at this time</p>
           </template>
         </div>
 
@@ -443,7 +449,7 @@
         </div>
 
         <!-- Sprint Health (compact) -->
-        <div class="mt-auto pt-4">
+        <div class="pt-4">
           <p class="text-xs font-medium opacity-50 uppercase mb-2">Sprint Health</p>
           <template x-if="selectedSprint">
             <div class="flex items-center gap-2">
@@ -457,6 +463,32 @@
               <span class="text-sm opacity-60" x-text="getDaysRemaining(selectedSprint) + ' days left'"></span>
             </div>
           </template>
+        </div>
+
+        <div class="divider my-2"></div>
+
+        <!-- Dev Tools -->
+        <div class="mt-auto">
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary class="collapse-title text-xs font-medium py-2 min-h-0">
+              <span class="flex items-center gap-2">
+                <ion-icon name="code-slash-outline"></ion-icon>
+                Dev Tools
+              </span>
+            </summary>
+            <div class="collapse-content px-2">
+              <div class="space-y-2 pt-2">
+                <button @click="loadDemoData(); document.getElementById('main-drawer').checked = false" class="btn btn-sm btn-block btn-ghost justify-start gap-2">
+                  <ion-icon name="download-outline"></ion-icon>
+                  Load Demo Data
+                </button>
+                <button @click="if(confirm('This will delete ALL your data. Are you sure?')) { resetAllData(); }" class="btn btn-sm btn-block btn-ghost justify-start gap-2 text-error">
+                  <ion-icon name="trash-outline"></ion-icon>
+                  Reset All Data
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -1196,6 +1228,213 @@
           console.log('Kanban initialized with', this.kanbanInstances.length, 'columns');
         },
         
+        // === DEV TOOLS ===
+        resetAllData() {
+          // Clear all localStorage keys used by the app
+          const keys = ['checkmate_tasks', 'checkmate_tags', 'checkmate_sprints', 'checkmate_routines', 'checkmate_settings', 'checkmate_currentView', 'checkmate_theme'];
+          keys.forEach(key => localStorage.removeItem(key));
+          // Reload the page to reinitialize
+          window.location.reload();
+        },
+
+        loadDemoData() {
+          // Create demo tags first (need IDs for tasks)
+          const workTagId = this.generateId();
+          const personalTagId = this.generateId();
+          const healthTagId = this.generateId();
+          const learningTagId = this.generateId();
+
+          this.tags = [
+            { id: 'untagged', name: 'Untagged', icon: '📦', color: '#6b7280', defaultCapacity: 10, description: '' },
+            { id: workTagId, name: 'Work', icon: '💼', color: '#3b82f6', defaultCapacity: 25, description: 'Work tasks' },
+            { id: personalTagId, name: 'Personal', icon: '🏠', color: '#22c55e', defaultCapacity: 15, description: 'Personal tasks' },
+            { id: healthTagId, name: 'Health', icon: '❤️', color: '#ef4444', defaultCapacity: 10, description: 'Health & fitness' },
+            { id: learningTagId, name: 'Learning', icon: '📚', color: '#8b5cf6', defaultCapacity: 10, description: 'Learning & growth' },
+          ];
+
+          this.routines = [
+            { id: this.generateId(), name: 'Work Hours', icon: '💼', color: '#3b82f6', priority: 8, taskFilterExpression: 'hasTag("Work")', activationExpression: 'isWeekday and hour >= 9 and hour < 18' },
+            { id: this.generateId(), name: 'Evening', icon: '🌙', color: '#8b5cf6', priority: 5, taskFilterExpression: 'hasAnyTag("Personal", "Health")', activationExpression: 'hour >= 18 or hour < 9' },
+            { id: this.generateId(), name: 'Weekend', icon: '☀️', color: '#f59e0b', priority: 7, taskFilterExpression: 'hasAnyTag("Personal", "Health", "Learning")', activationExpression: 'isWeekend' }
+          ];
+
+          // Get current sprint ID
+          const currentSprintId = this.sprints[0]?.id;
+          const nextSprintId = this.sprints[1]?.id;
+
+          // Tutorial/Demo tasks
+          this.tasks = [
+            // === TUTORIAL TASKS (in current sprint) ===
+            {
+              id: this.generateId(),
+              title: 'Welcome to Check Mate! Tap here to see task details',
+              description: 'This is a tutorial task. Check Mate helps you manage tasks with an ADHD-friendly approach:\n\n- Focus on ONE task at a time\n- Organize by weekly sprints\n- Filter tasks by routine (work/personal)\n- Track time with focus sessions\n\nTap "Done" when you\'ve read this!',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 0,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Try starting a Focus session (tap the play button)',
+              description: 'Focus sessions help you track time spent on tasks.\n\n1. Tap the play button on any task\n2. Work on the task\n3. When done, tap Complete to log your time\n\nSessions are saved and help you understand where your time goes.',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 1,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Switch to Tasks view to see the Kanban board',
+              description: 'The Tasks view shows all your tasks organized in columns:\n\n- **Backlog**: Tasks not yet scheduled\n- **This Week**: Current sprint tasks\n- **Next Week**: Upcoming sprint tasks\n\nDrag tasks between columns to schedule them!',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 2,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Open the menu (hamburger icon) to explore settings',
+              description: 'The menu contains:\n\n- **Routine selector**: Switch between Work/Personal/etc.\n- **Manage Tags**: Create custom categories\n- **Manage Routines**: Set up time-based filters\n- **Dev Tools**: Reset data or reload demo',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 3,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === SAMPLE WORK TASKS ===
+            {
+              id: this.generateId(),
+              title: 'Review quarterly report',
+              description: 'Go through the Q4 numbers and prepare summary.',
+              tagPoints: { [workTagId]: 3 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 10,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Prepare presentation slides',
+              description: 'Create slides for the team meeting.',
+              tagPoints: { [workTagId]: 2 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 11,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Reply to client emails',
+              description: 'Catch up on pending email threads.',
+              tagPoints: { [workTagId]: 1 },
+              location: { type: 'sprint', sprintId: nextSprintId },
+              status: 'active',
+              order: 0,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === SAMPLE PERSONAL TASKS ===
+            {
+              id: this.generateId(),
+              title: 'Morning workout',
+              description: '30 min cardio + stretching',
+              tagPoints: { [healthTagId]: 2 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 20,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Grocery shopping',
+              description: 'Weekly groceries - check the list in the fridge.',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 21,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Read a chapter of current book',
+              description: 'Continue reading "Atomic Habits"',
+              tagPoints: { [learningTagId]: 1 },
+              location: { type: 'sprint', sprintId: nextSprintId },
+              status: 'active',
+              order: 1,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === BACKLOG TASKS ===
+            {
+              id: this.generateId(),
+              title: 'Plan vacation itinerary',
+              description: 'Research destinations and book accommodations.',
+              tagPoints: { [personalTagId]: 2 },
+              location: { type: 'backlog' },
+              status: 'active',
+              order: 0,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Learn a new programming language',
+              description: 'Start with Rust or Go tutorials.',
+              tagPoints: { [learningTagId]: 5 },
+              location: { type: 'backlog' },
+              status: 'active',
+              order: 1,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === RECURRING TASK TEMPLATE ===
+            {
+              id: this.generateId(),
+              title: 'Weekly review',
+              description: 'Review completed tasks and plan next week.',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'backlog' },
+              status: 'active',
+              recurrence: 'FREQ=WEEKLY;BYDAY=SU',
+              order: 100,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            }
+          ];
+
+          console.log('Demo data loaded!');
+        },
+
         initializeDefaults() {
           if (this.tags.length === 0) {
             this.tags = [

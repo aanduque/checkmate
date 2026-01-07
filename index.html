@@ -1374,9 +1374,32 @@
         showImportModal: false,
 
         // Form states
-        taskForm: this.getEmptyTaskForm(),
-        tagForm: this.getEmptyTagForm(),
-        routineForm: this.getEmptyRoutineForm(),
+        taskForm: {
+          id: null,
+          title: '',
+          description: '',
+          tagPoints: {},
+          recurrence: '',
+          recurrencePreset: ''
+        },
+        tagForm: {
+          id: null,
+          name: '',
+          description: '',
+          icon: '📌',
+          color: '#3b82f6',
+          defaultCapacity: 20
+        },
+        routineForm: {
+          id: null,
+          name: '',
+          description: '',
+          icon: '📋',
+          color: '#8b5cf6',
+          priority: 5,
+          taskFilterExpression: '',
+          activationExpression: ''
+        },
         skipJustification: '',
         confirmAction: null,
         confirmMessage: '',

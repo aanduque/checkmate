@@ -21,6 +21,7 @@
   <!-- Tailwind Configuration -->
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -92,15 +93,16 @@
     .health-off-track { color: #ef4444; }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
 
   <!-- Main Application Container -->
-  <div x-data="checkMate" x-cloak class="min-h-screen flex flex-col">
+  <div x-data="checkMate" x-cloak class="min-h-screen flex flex-col"
+       x-effect="document.documentElement.classList.toggle('dark', settings.theme === 'dark')">
 
     <!-- Active Session Banner -->
     <div x-show="activeSession" class="bg-primary-600 text-white px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">⏱️</span>
+        <span class="w-6 h-6" x-html="getIcon('clock', 'w-6 h-6')"></span>
         <div>
           <div class="font-medium" x-text="getActiveSessionTask()?.title"></div>
           <div class="text-sm opacity-90">Focus session in progress</div>
@@ -118,10 +120,13 @@
     </div>
 
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200 px-4 py-3">
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
       <div class="max-w-6xl mx-auto flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <h1 class="text-xl font-bold text-gray-800">✓ Check Mate</h1>
+          <h1 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+              <span class="text-primary-600" x-html="getIcon('checkCircle', 'w-6 h-6')"></span>
+              Check Mate
+            </h1>
           <!-- Active Routine Indicator -->
           <template x-if="activeRoutine">
             <div class="flex items-center gap-2 px-2 py-1 rounded-full text-sm" :style="`background-color: ${activeRoutine.color}20; color: ${activeRoutine.color}`">
@@ -135,7 +140,7 @@
         </div>
         <div class="flex items-center gap-2">
           <!-- Routine Override Dropdown -->
-          <select x-model="settings.routineOverride" @change="updateActiveRoutine()" class="text-sm border rounded px-2 py-1">
+          <select x-model="settings.routineOverride" @change="updateActiveRoutine()" class="text-sm border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
             <option value="">Auto Routine</option>
             <template x-for="routine in routines" :key="routine.id">
               <option :value="routine.id" x-text="routine.icon + ' ' + routine.name"></option>
@@ -149,24 +154,24 @@
     </header>
 
     <!-- Navigation Tabs -->
-    <nav class="bg-white border-b border-gray-200 px-4">
+    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4">
       <div class="max-w-6xl mx-auto flex gap-1 overflow-x-auto">
-        <button @click="currentView = 'dashboard'" :class="currentView === 'dashboard' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
+        <button @click="currentView = 'dashboard'" :class="currentView === 'dashboard' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
           Dashboard
         </button>
-        <button @click="currentView = 'backlog'" :class="currentView === 'backlog' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
+        <button @click="currentView = 'backlog'" :class="currentView === 'backlog' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
           Backlog
         </button>
-        <button @click="currentView = 'sprints'" :class="currentView === 'sprints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
+        <button @click="currentView = 'sprints'" :class="currentView === 'sprints' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
           Sprints
         </button>
-        <button @click="currentView = 'tags'" :class="currentView === 'tags' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
+        <button @click="currentView = 'tags'" :class="currentView === 'tags' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
           Tags
         </button>
-        <button @click="currentView = 'routines'" :class="currentView === 'routines' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
+        <button @click="currentView = 'routines'" :class="currentView === 'routines' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
           Routines
         </button>
-        <button @click="currentView = 'settings'" :class="currentView === 'settings' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
+        <button @click="currentView = 'settings'" :class="currentView === 'settings' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'" class="px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap tap-target">
           Settings
         </button>
       </div>
@@ -179,9 +184,9 @@
         <!-- ===================== DASHBOARD VIEW ===================== -->
         <div x-show="currentView === 'dashboard'" class="space-y-6">
           <!-- Sprint Health Summary -->
-          <div class="bg-white rounded-lg border border-gray-200 p-4">
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="font-semibold text-gray-800">Current Sprint</h2>
+              <h2 class="font-semibold text-gray-800 dark:text-white">Current Sprint</h2>
               <template x-if="getCurrentSprint()">
                 <span class="text-sm text-gray-500" x-text="formatDateRange(getCurrentSprint().startDate, getCurrentSprint().endDate)"></span>
               </template>
@@ -196,7 +201,7 @@
                 <!-- Per-tag capacity -->
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <template x-for="[tagId, info] in Object.entries(health.tags)" :key="tagId">
-                    <div class="bg-gray-50 rounded p-2">
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded p-2">
                       <div class="flex items-center gap-1 text-sm">
                         <span x-text="getTagById(tagId)?.icon"></span>
                         <span x-text="getTagById(tagId)?.name" class="truncate"></span>
@@ -213,15 +218,15 @@
           </div>
 
           <!-- Today's Focus -->
-          <div class="bg-white rounded-lg border border-gray-200 p-4">
-            <h2 class="font-semibold text-gray-800 mb-4">Today's Focus</h2>
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <h2 class="font-semibold text-gray-800 dark:text-white mb-4">Today's Focus</h2>
             <template x-if="getCurrentSprint()">
               <div class="space-y-2">
                 <template x-for="task in filterTasksByRoutine(getTasksForSprint(getCurrentSprint().id)).filter(t => isTaskVisible(t)).slice(0, 5)" :key="task.id">
-                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" @click="openEditTaskModal(task)">
+                  <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" @click="openEditTaskModal(task)">
                     <button @click.stop="completeTask(task.id)" class="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-primary-500 hover:bg-primary-50 flex-shrink-0"></button>
                     <div class="flex-1 min-w-0">
-                      <div class="font-medium text-gray-800 truncate" x-text="task.title"></div>
+                      <div class="font-medium text-gray-800 dark:text-white truncate" x-text="task.title"></div>
                       <div class="flex items-center gap-2 mt-1">
                         <template x-for="[tagId, pts] in Object.entries(task.tagPoints)" :key="tagId">
                           <span class="text-xs px-2 py-0.5 rounded-full" :style="`background-color: ${getTagById(tagId)?.color}20; color: ${getTagById(tagId)?.color}`">
@@ -231,13 +236,11 @@
                         </template>
                       </div>
                     </div>
-                    <button @click.stop="startSession(task.id)" :disabled="activeSession" class="text-primary-600 hover:text-primary-700 disabled:opacity-50 tap-target">
-                      ▶️
-                    </button>
+                    <button @click.stop="startSession(task.id)" :disabled="activeSession" class="text-primary-600 hover:text-primary-700 disabled:opacity-50 tap-target" x-html="getIcon('play')"></button>
                   </div>
                 </template>
                 <template x-if="filterTasksByRoutine(getTasksForSprint(getCurrentSprint().id)).filter(t => isTaskVisible(t)).length === 0">
-                  <p class="text-gray-500 text-center py-4">No tasks in current sprint. Add some from the backlog!</p>
+                  <p class="text-gray-500 dark:text-gray-400 text-center py-4">No tasks in current sprint. Add some from the backlog!</p>
                 </template>
               </div>
             </template>
@@ -245,21 +248,21 @@
 
           <!-- Quick Actions -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button @click="openNewTaskModal()" class="bg-white border border-gray-200 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 tap-target">
-              <div class="text-2xl mb-1">➕</div>
-              <div class="text-sm font-medium">New Task</div>
+            <button @click="openNewTaskModal()" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-gray-700 tap-target">
+              <div class="flex justify-center mb-1 text-primary-600" x-html="getIcon('plus', 'w-6 h-6')"></div>
+              <div class="text-sm font-medium dark:text-white">New Task</div>
             </button>
-            <button @click="currentView = 'backlog'" class="bg-white border border-gray-200 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 tap-target">
-              <div class="text-2xl mb-1">📥</div>
-              <div class="text-sm font-medium">Backlog</div>
+            <button @click="currentView = 'backlog'" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-gray-700 tap-target">
+              <div class="flex justify-center mb-1 text-gray-600" x-html="getIcon('inbox', 'w-6 h-6')"></div>
+              <div class="text-sm font-medium dark:text-white">Backlog</div>
             </button>
-            <button @click="currentView = 'sprints'" class="bg-white border border-gray-200 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 tap-target">
-              <div class="text-2xl mb-1">🏃</div>
-              <div class="text-sm font-medium">Sprints</div>
+            <button @click="currentView = 'sprints'" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-gray-700 tap-target">
+              <div class="flex justify-center mb-1 text-green-600" x-html="getIcon('bolt', 'w-6 h-6')"></div>
+              <div class="text-sm font-medium dark:text-white">Sprints</div>
             </button>
-            <button @click="loadSeedData()" class="bg-white border border-gray-200 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 tap-target">
-              <div class="text-2xl mb-1">🌱</div>
-              <div class="text-sm font-medium">Load Sample</div>
+            <button @click="loadSeedData()" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-gray-700 tap-target">
+              <div class="flex justify-center mb-1 text-yellow-600" x-html="getIcon('sparkles', 'w-6 h-6')"></div>
+              <div class="text-sm font-medium dark:text-white">Load Sample</div>
             </button>
           </div>
         </div>
@@ -267,10 +270,10 @@
         <!-- ===================== BACKLOG VIEW ===================== -->
         <div x-show="currentView === 'backlog'" class="space-y-4">
           <!-- Filters -->
-          <div class="bg-white rounded-lg border border-gray-200 p-4">
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <div class="flex flex-wrap gap-3">
-              <input type="text" x-model="backlogSearch" placeholder="Search tasks..." class="flex-1 min-w-[200px] border rounded-lg px-3 py-2 text-sm">
-              <select x-model="backlogSort" class="border rounded-lg px-3 py-2 text-sm">
+              <input type="text" x-model="backlogSearch" placeholder="Search tasks..." class="flex-1 min-w-[200px] border dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white">
+              <select x-model="backlogSort" class="border dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white">
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="points">Most points</option>
@@ -285,23 +288,23 @@
                 </button>
               </template>
               <template x-if="backlogTagFilter.length > 0">
-                <button @click="backlogTagFilter = []" class="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+                <button @click="backlogTagFilter = []" class="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">Clear</button>
               </template>
             </div>
           </div>
 
           <!-- Backlog Tasks -->
-          <div class="bg-white rounded-lg border border-gray-200">
-            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 class="font-semibold text-gray-800">Backlog Tasks</h2>
-              <span class="text-sm text-gray-500" x-text="`${getBacklogTasks().length} tasks`"></span>
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 class="font-semibold text-gray-800 dark:text-white">Backlog Tasks</h2>
+              <span class="text-sm text-gray-500 dark:text-gray-400" x-text="`${getBacklogTasks().length} tasks`"></span>
             </div>
-            <div class="divide-y divide-gray-100">
+            <div class="divide-y divide-gray-100 dark:divide-gray-700">
               <template x-for="task in getBacklogTasks()" :key="task.id">
-                <div class="p-4 hover:bg-gray-50 flex items-start gap-3">
+                <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-start gap-3">
                   <button @click="completeTask(task.id)" class="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-primary-500 hover:bg-primary-50 flex-shrink-0 mt-0.5"></button>
                   <div class="flex-1 min-w-0 cursor-pointer" @click="openEditTaskModal(task)">
-                    <div class="font-medium text-gray-800" x-text="task.title"></div>
+                    <div class="font-medium text-gray-800 dark:text-white" x-text="task.title"></div>
                     <div class="flex items-center gap-2 mt-1 flex-wrap">
                       <template x-for="[tagId, pts] in Object.entries(task.tagPoints)" :key="tagId">
                         <span class="text-xs px-2 py-0.5 rounded-full" :style="`background-color: ${getTagById(tagId)?.color}20; color: ${getTagById(tagId)?.color}`">
@@ -314,7 +317,7 @@
                   </div>
                   <div class="flex items-center gap-1">
                     <!-- Move to Sprint Dropdown -->
-                    <select @change="if($event.target.value) { moveTaskToSprint(task.id, $event.target.value); $event.target.value = ''; }" class="text-xs border rounded px-2 py-1">
+                    <select @change="if($event.target.value) { moveTaskToSprint(task.id, $event.target.value); $event.target.value = ''; }" class="text-xs border dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-white">
                       <option value="">Move to...</option>
                       <template x-for="(sprint, idx) in sprints" :key="sprint.id">
                         <option :value="sprint.id" x-text="getSprintLabel(sprint) + ' (' + formatDateRange(sprint.startDate, sprint.endDate) + ')'"></option>
@@ -324,7 +327,7 @@
                 </div>
               </template>
               <template x-if="getBacklogTasks().length === 0">
-                <div class="p-8 text-center text-gray-500">
+                <div class="p-8 text-center text-gray-500 dark:text-gray-400">
                   <p>No tasks in backlog</p>
                   <button @click="openNewTaskModal()" class="mt-2 text-primary-600 hover:text-primary-700">Create a task</button>
                 </div>
@@ -333,17 +336,20 @@
           </div>
 
           <!-- Recurring Templates -->
-          <div class="bg-white rounded-lg border border-gray-200">
-            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 class="font-semibold text-gray-800">🔄 Recurring Templates</h2>
-              <span class="text-sm text-gray-500" x-text="`${getRecurringTemplates().length} templates`"></span>
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 class="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <span class="text-primary-600" x-html="getIcon('arrowPath')"></span>
+                Recurring Templates
+              </h2>
+              <span class="text-sm text-gray-500 dark:text-gray-400" x-text="`${getRecurringTemplates().length} templates`"></span>
             </div>
-            <div class="divide-y divide-gray-100">
+            <div class="divide-y divide-gray-100 dark:divide-gray-700">
               <template x-for="task in getRecurringTemplates()" :key="task.id">
-                <div class="p-4 hover:bg-gray-50 flex items-start gap-3" @click="openEditTaskModal(task)">
-                  <span class="text-lg">🔄</span>
+                <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-start gap-3" @click="openEditTaskModal(task)">
+                  <span class="text-primary-600" x-html="getIcon('arrowPath')"></span>
                   <div class="flex-1 min-w-0 cursor-pointer">
-                    <div class="font-medium text-gray-800" x-text="task.title"></div>
+                    <div class="font-medium text-gray-800 dark:text-white" x-text="task.title"></div>
                     <div class="flex items-center gap-2 mt-1 flex-wrap">
                       <template x-for="[tagId, pts] in Object.entries(task.tagPoints)" :key="tagId">
                         <span class="text-xs px-2 py-0.5 rounded-full" :style="`background-color: ${getTagById(tagId)?.color}20; color: ${getTagById(tagId)?.color}`">
@@ -357,7 +363,7 @@
                 </div>
               </template>
               <template x-if="getRecurringTemplates().length === 0">
-                <div class="p-8 text-center text-gray-500">
+                <div class="p-8 text-center text-gray-500 dark:text-gray-400">
                   <p>No recurring templates</p>
                   <p class="text-xs mt-1">Create a task with recurrence to add one</p>
                 </div>
@@ -369,15 +375,15 @@
         <!-- ===================== SPRINTS VIEW ===================== -->
         <div x-show="currentView === 'sprints'" class="space-y-4">
           <!-- Sprint Tabs -->
-          <div class="bg-white rounded-lg border border-gray-200">
-            <div class="flex border-b border-gray-200">
-              <button @click="sprintTab = 'current'" :class="sprintTab === 'current' ? 'border-primary-500 text-primary-600 bg-primary-50' : 'border-transparent'" class="flex-1 px-4 py-3 border-b-2 font-medium text-sm">
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div class="flex border-b border-gray-200 dark:border-gray-700">
+              <button @click="sprintTab = 'current'" :class="sprintTab === 'current' ? 'border-primary-500 text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'border-transparent dark:text-gray-300'" class="flex-1 px-4 py-3 border-b-2 font-medium text-sm">
                 Current
               </button>
-              <button @click="sprintTab = 'next'" :class="sprintTab === 'next' ? 'border-primary-500 text-primary-600 bg-primary-50' : 'border-transparent'" class="flex-1 px-4 py-3 border-b-2 font-medium text-sm">
+              <button @click="sprintTab = 'next'" :class="sprintTab === 'next' ? 'border-primary-500 text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'border-transparent dark:text-gray-300'" class="flex-1 px-4 py-3 border-b-2 font-medium text-sm">
                 Next
               </button>
-              <button @click="sprintTab = 'next2'" :class="sprintTab === 'next2' ? 'border-primary-500 text-primary-600 bg-primary-50' : 'border-transparent'" class="flex-1 px-4 py-3 border-b-2 font-medium text-sm">
+              <button @click="sprintTab = 'next2'" :class="sprintTab === 'next2' ? 'border-primary-500 text-primary-600 bg-primary-50 dark:bg-primary-900/30' : 'border-transparent dark:text-gray-300'" class="flex-1 px-4 py-3 border-b-2 font-medium text-sm">
                 Next +1
               </button>
             </div>
@@ -385,11 +391,11 @@
             <!-- Sprint Content -->
             <template x-if="sprintTab === 'current' && getSprintByIndex(0)">
               <div x-data="{ sprint: getSprintByIndex(0), health: calculateSprintHealth(getSprintByIndex(0)) }">
-                <div class="p-4 border-b border-gray-100 bg-gray-50">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                   <div class="flex items-center justify-between">
                     <div>
-                      <span class="font-medium">Current Sprint</span>
-                      <span class="text-sm text-gray-500 ml-2" x-text="formatDateRange(sprint.startDate, sprint.endDate)"></span>
+                      <span class="font-medium dark:text-white">Current Sprint</span>
+                      <span class="text-sm text-gray-500 dark:text-gray-400 ml-2" x-text="formatDateRange(sprint.startDate, sprint.endDate)"></span>
                     </div>
                     <div class="flex items-center gap-2">
                       <span x-text="getHealthIcon(health.overall)"></span>
@@ -399,12 +405,12 @@
                   <!-- Capacity bars -->
                   <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
                     <template x-for="[tagId, info] in Object.entries(health.tags)" :key="tagId">
-                      <div>
+                      <div class="dark:text-gray-300">
                         <div class="flex items-center justify-between text-xs mb-1">
                           <span><span x-text="getTagById(tagId)?.icon"></span> <span x-text="getTagById(tagId)?.name"></span></span>
                           <span x-text="`${info.assigned}/${info.capacity}`"></span>
                         </div>
-                        <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                           <div class="h-full rounded-full transition-all" :class="info.health === 'on_track' ? 'bg-green-500' : info.health === 'at_risk' ? 'bg-yellow-500' : 'bg-red-500'" :style="`width: ${Math.min(100, (info.assigned / info.capacity) * 100)}%`"></div>
                         </div>
                       </div>
@@ -412,13 +418,13 @@
                   </div>
                 </div>
                 <!-- Tasks List -->
-                <div class="divide-y divide-gray-100" x-sort="handleTaskReorder(sprint.id, $item, $position)">
+                <div class="divide-y divide-gray-100 dark:divide-gray-700" x-sort="handleTaskReorder(sprint.id, $item, $position)">
                   <template x-for="task in getTasksForSprint(sprint.id).filter(t => isTaskVisible(t))" :key="task.id">
-                    <div x-sort:item="task.id" class="p-4 hover:bg-gray-50 flex items-start gap-3 cursor-move" :class="task.skipState?.type === 'for_now' ? 'opacity-50' : task.skipState?.type === 'for_day' && new Date(task.skipState.returnAt) <= new Date() ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''">
+                    <div x-sort:item="task.id" class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-start gap-3 cursor-move" :class="task.skipState?.type === 'for_now' ? 'opacity-50' : task.skipState?.type === 'for_day' && new Date(task.skipState.returnAt) <= new Date() ? 'bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-400' : ''">
                       <button @click="completeTask(task.id)" class="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-primary-500 hover:bg-primary-50 flex-shrink-0 mt-0.5"></button>
                       <div class="flex-1 min-w-0" @click="openEditTaskModal(task)">
                         <div class="flex items-center gap-2">
-                          <span class="font-medium text-gray-800" x-text="task.title"></span>
+                          <span class="font-medium text-gray-800 dark:text-white" x-text="task.title"></span>
                           <template x-if="task.skipState?.type === 'for_day' && new Date(task.skipState.returnAt) <= new Date()">
                             <span class="text-xs bg-yellow-100 text-yellow-700 px-1 rounded">Returned</span>
                           </template>
@@ -433,16 +439,16 @@
                         </div>
                       </div>
                       <div class="flex items-center gap-1 flex-shrink-0">
-                        <button @click="startSession(task.id)" :disabled="activeSession" class="p-1 text-gray-400 hover:text-primary-600 disabled:opacity-50" title="Start session">▶️</button>
-                        <button @click="skipTaskForNow(task.id)" class="p-1 text-gray-400 hover:text-yellow-600" title="Skip for now">⏭️</button>
-                        <button @click="selectedTask = task; showSkipDayModal = true" class="p-1 text-gray-400 hover:text-orange-600" title="Skip for day">📅</button>
-                        <button @click="moveTaskToBacklog(task.id)" class="p-1 text-gray-400 hover:text-gray-600" title="Move to backlog">📥</button>
+                        <button @click="startSession(task.id)" :disabled="activeSession" class="p-1 text-gray-400 hover:text-primary-600 disabled:opacity-50" title="Start session" x-html="getIcon('play')"></button>
+                        <button @click="skipTaskForNow(task.id)" class="p-1 text-gray-400 hover:text-yellow-600" title="Skip for now" x-html="getIcon('forward')"></button>
+                        <button @click="selectedTask = task; showSkipDayModal = true" class="p-1 text-gray-400 hover:text-orange-600" title="Skip for day" x-html="getIcon('calendar')"></button>
+                        <button @click="moveTaskToBacklog(task.id)" class="p-1 text-gray-400 hover:text-gray-600" title="Move to backlog" x-html="getIcon('inbox')"></button>
                       </div>
                     </div>
                   </template>
                 </div>
                 <template x-if="getTasksForSprint(sprint.id).filter(t => isTaskVisible(t)).length === 0">
-                  <div class="p-8 text-center text-gray-500">
+                  <div class="p-8 text-center text-gray-500 dark:text-gray-400">
                     <p>No tasks in this sprint</p>
                     <button @click="currentView = 'backlog'" class="mt-2 text-primary-600 hover:text-primary-700">Add from backlog</button>
                   </div>
@@ -452,20 +458,20 @@
 
             <template x-if="sprintTab === 'next' && getSprintByIndex(1)">
               <div x-data="{ sprint: getSprintByIndex(1), health: calculateSprintHealth(getSprintByIndex(1)) }">
-                <div class="p-4 border-b border-gray-100 bg-gray-50">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                   <div class="flex items-center justify-between">
                     <div>
-                      <span class="font-medium">Next Sprint</span>
-                      <span class="text-sm text-gray-500 ml-2" x-text="formatDateRange(sprint.startDate, sprint.endDate)"></span>
+                      <span class="font-medium dark:text-white">Next Sprint</span>
+                      <span class="text-sm text-gray-500 dark:text-gray-400 ml-2" x-text="formatDateRange(sprint.startDate, sprint.endDate)"></span>
                     </div>
                   </div>
                 </div>
-                <div class="divide-y divide-gray-100">
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
                   <template x-for="task in getTasksForSprint(sprint.id)" :key="task.id">
-                    <div class="p-4 hover:bg-gray-50 flex items-start gap-3">
+                    <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-start gap-3">
                       <button @click="completeTask(task.id)" class="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-primary-500 flex-shrink-0 mt-0.5"></button>
                       <div class="flex-1 min-w-0" @click="openEditTaskModal(task)">
-                        <div class="font-medium text-gray-800" x-text="task.title"></div>
+                        <div class="font-medium text-gray-800 dark:text-white" x-text="task.title"></div>
                         <div class="flex items-center gap-2 mt-1">
                           <template x-for="[tagId, pts] in Object.entries(task.tagPoints)" :key="tagId">
                             <span class="text-xs px-2 py-0.5 rounded-full" :style="`background-color: ${getTagById(tagId)?.color}20; color: ${getTagById(tagId)?.color}`">
@@ -475,32 +481,32 @@
                           </template>
                         </div>
                       </div>
-                      <button @click="moveTaskToBacklog(task.id)" class="p-1 text-gray-400 hover:text-gray-600">📥</button>
+                      <button @click="moveTaskToBacklog(task.id)" class="p-1 text-gray-400 hover:text-gray-600" x-html="getIcon('inbox')"></button>
                     </div>
                   </template>
                 </div>
                 <template x-if="getTasksForSprint(sprint.id).length === 0">
-                  <div class="p-8 text-center text-gray-500">No tasks scheduled</div>
+                  <div class="p-8 text-center text-gray-500 dark:text-gray-400">No tasks scheduled</div>
                 </template>
               </div>
             </template>
 
             <template x-if="sprintTab === 'next2' && getSprintByIndex(2)">
               <div x-data="{ sprint: getSprintByIndex(2) }">
-                <div class="p-4 border-b border-gray-100 bg-gray-50">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                   <div class="flex items-center justify-between">
                     <div>
-                      <span class="font-medium">Next +1 Sprint</span>
-                      <span class="text-sm text-gray-500 ml-2" x-text="formatDateRange(sprint.startDate, sprint.endDate)"></span>
+                      <span class="font-medium dark:text-white">Next +1 Sprint</span>
+                      <span class="text-sm text-gray-500 dark:text-gray-400 ml-2" x-text="formatDateRange(sprint.startDate, sprint.endDate)"></span>
                     </div>
                   </div>
                 </div>
-                <div class="divide-y divide-gray-100">
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
                   <template x-for="task in getTasksForSprint(sprint.id)" :key="task.id">
-                    <div class="p-4 hover:bg-gray-50 flex items-start gap-3">
+                    <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-start gap-3">
                       <button @click="completeTask(task.id)" class="w-5 h-5 rounded-full border-2 border-gray-300 hover:border-primary-500 flex-shrink-0 mt-0.5"></button>
                       <div class="flex-1 min-w-0" @click="openEditTaskModal(task)">
-                        <div class="font-medium text-gray-800" x-text="task.title"></div>
+                        <div class="font-medium text-gray-800 dark:text-white" x-text="task.title"></div>
                         <div class="flex items-center gap-2 mt-1">
                           <template x-for="[tagId, pts] in Object.entries(task.tagPoints)" :key="tagId">
                             <span class="text-xs px-2 py-0.5 rounded-full" :style="`background-color: ${getTagById(tagId)?.color}20; color: ${getTagById(tagId)?.color}`">
@@ -510,7 +516,7 @@
                           </template>
                         </div>
                       </div>
-                      <button @click="moveTaskToBacklog(task.id)" class="p-1 text-gray-400 hover:text-gray-600">📥</button>
+                      <button @click="moveTaskToBacklog(task.id)" class="p-1 text-gray-400 hover:text-gray-600" x-html="getIcon('inbox')"></button>
                     </div>
                   </template>
                 </div>
@@ -525,7 +531,7 @@
         <!-- ===================== TAGS VIEW ===================== -->
         <div x-show="currentView === 'tags'" class="space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-800">Tags</h2>
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Tags</h2>
             <button @click="openNewTagModal()" class="bg-primary-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-700">
               + New Tag
             </button>
@@ -533,12 +539,12 @@
 
           <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <template x-for="tag in tags" :key="tag.id">
-              <div class="bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 cursor-pointer" @click="openEditTagModal(tag)">
+              <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 cursor-pointer" @click="openEditTagModal(tag)">
                 <div class="flex items-start justify-between">
                   <div class="flex items-center gap-2">
                     <span class="text-2xl" x-text="tag.icon"></span>
                     <div>
-                      <div class="font-medium text-gray-800" x-text="tag.name"></div>
+                      <div class="font-medium text-gray-800 dark:text-white" x-text="tag.name"></div>
                       <div class="text-xs text-gray-500" x-text="tag.description || 'No description'"></div>
                     </div>
                   </div>
@@ -556,7 +562,7 @@
         <!-- ===================== ROUTINES VIEW ===================== -->
         <div x-show="currentView === 'routines'" class="space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-800">Routines</h2>
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Routines</h2>
             <button @click="openNewRoutineModal()" class="bg-primary-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-700">
               + New Routine
             </button>
@@ -564,13 +570,13 @@
 
           <div class="space-y-3">
             <template x-for="routine in routines" :key="routine.id">
-              <div class="bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 cursor-pointer" :class="activeRoutine?.id === routine.id ? 'ring-2 ring-primary-500' : ''" @click="openEditRoutineModal(routine)">
+              <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 cursor-pointer" :class="activeRoutine?.id === routine.id ? 'ring-2 ring-primary-500' : ''" @click="openEditRoutineModal(routine)">
                 <div class="flex items-start justify-between">
                   <div class="flex items-center gap-3">
                     <span class="text-2xl" x-text="routine.icon"></span>
                     <div>
                       <div class="flex items-center gap-2">
-                        <span class="font-medium text-gray-800" x-text="routine.name"></span>
+                        <span class="font-medium text-gray-800 dark:text-white" x-text="routine.name"></span>
                         <template x-if="activeRoutine?.id === routine.id">
                           <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Active</span>
                         </template>
@@ -581,11 +587,11 @@
                   <span class="text-sm text-gray-400">Priority: <span x-text="routine.priority"></span></span>
                 </div>
                 <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <div class="bg-gray-50 rounded p-2">
+                  <div class="bg-gray-50 dark:bg-gray-700 rounded p-2">
                     <div class="text-gray-500 mb-1">Task Filter:</div>
                     <code class="text-gray-700" x-text="routine.taskFilterExpression || '(all tasks)'"></code>
                   </div>
-                  <div class="bg-gray-50 rounded p-2">
+                  <div class="bg-gray-50 dark:bg-gray-700 rounded p-2">
                     <div class="text-gray-500 mb-1">Activation:</div>
                     <code class="text-gray-700" x-text="routine.activationExpression || '(always)'"></code>
                   </div>
@@ -593,7 +599,7 @@
               </div>
             </template>
             <template x-if="routines.length === 0">
-              <div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+              <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center text-gray-500">
                 <p>No routines configured</p>
                 <p class="text-sm mt-1">Routines help filter tasks based on time of day</p>
               </div>
@@ -603,35 +609,55 @@
 
         <!-- ===================== SETTINGS VIEW ===================== -->
         <div x-show="currentView === 'settings'" class="space-y-6">
-          <h2 class="text-lg font-semibold text-gray-800">Settings</h2>
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Settings</h2>
+
+          <!-- Appearance -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <h3 class="font-medium text-gray-800 dark:text-white mb-4">Appearance</h3>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="w-5 h-5" x-html="settings.theme === 'dark' ? Icons.moon : Icons.sun"></span>
+                <div>
+                  <div class="font-medium dark:text-white">Dark Mode</div>
+                  <div class="text-sm text-gray-500 dark:text-gray-400">Toggle dark theme</div>
+                </div>
+              </div>
+              <button @click="settings.theme = settings.theme === 'dark' ? 'light' : 'dark'"
+                      class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                      :class="settings.theme === 'dark' ? 'bg-primary-600' : 'bg-gray-300'">
+                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                      :class="settings.theme === 'dark' ? 'translate-x-6' : 'translate-x-1'"></span>
+              </button>
+            </div>
+          </div>
 
           <!-- Data Management -->
-          <div class="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 class="font-medium text-gray-800 mb-4">Data Management</h3>
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <h3 class="font-medium text-gray-800 dark:text-white mb-4">Data Management</h3>
             <div class="space-y-3">
               <button @click="exportData()" class="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 flex items-center gap-3">
-                <span class="text-xl">📤</span>
+                <span class="text-gray-600" x-html="getIcon('download', 'w-6 h-6')"></span>
                 <div>
                   <div class="font-medium">Export Data</div>
                   <div class="text-sm text-gray-500">Download all data as JSON</div>
                 </div>
               </button>
               <button @click="showImportModal = true" class="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 flex items-center gap-3">
-                <span class="text-xl">📥</span>
+                <span class="text-gray-600" x-html="getIcon('upload', 'w-6 h-6')"></span>
                 <div>
                   <div class="font-medium">Import Data</div>
                   <div class="text-sm text-gray-500">Restore from JSON backup</div>
                 </div>
               </button>
               <button @click="loadSeedData()" class="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 flex items-center gap-3">
-                <span class="text-xl">🌱</span>
+                <span class="text-yellow-600" x-html="getIcon('sparkles', 'w-6 h-6')"></span>
                 <div>
                   <div class="font-medium">Load Sample Data</div>
                   <div class="text-sm text-gray-500">Add example tasks, tags, and routines</div>
                 </div>
               </button>
               <button @click="confirmAction('Are you sure you want to clear all data? This cannot be undone.', clearAllData)" class="w-full text-left px-4 py-3 bg-red-50 rounded-lg hover:bg-red-100 flex items-center gap-3 text-red-700">
-                <span class="text-xl">🗑️</span>
+                <span x-html="getIcon('trash', 'w-6 h-6')"></span>
                 <div>
                   <div class="font-medium">Clear All Data</div>
                   <div class="text-sm text-red-500">Remove all tasks, tags, and routines</div>
@@ -641,8 +667,8 @@
           </div>
 
           <!-- Sprint Capacity Overrides -->
-          <div class="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 class="font-medium text-gray-800 mb-4">Sprint Capacity Overrides</h3>
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <h3 class="font-medium text-gray-800 dark:text-white mb-4">Sprint Capacity Overrides</h3>
             <div class="space-y-4">
               <template x-for="(sprint, idx) in sprints" :key="sprint.id">
                 <div class="border border-gray-100 rounded-lg p-3">
@@ -661,8 +687,8 @@
           </div>
 
           <!-- About -->
-          <div class="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 class="font-medium text-gray-800 mb-2">About Check Mate</h3>
+          <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+            <h3 class="font-medium text-gray-800 dark:text-white mb-2">About Check Mate</h3>
             <p class="text-sm text-gray-600">An ADHD-focused productivity app with sprint-based planning, capacity management, and gentle skip mechanics.</p>
             <p class="text-xs text-gray-400 mt-2">Version 1.0.0 - PoC</p>
           </div>
@@ -678,34 +704,34 @@
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
         <div x-show="showTaskModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showTaskModal = false"></div>
 
-        <div x-show="showTaskModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-          <div class="bg-white px-4 pb-4 pt-5 sm:p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4" x-text="taskForm.id ? 'Edit Task' : 'New Task'"></h3>
+        <div x-show="showTaskModal" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+          <div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4" x-text="taskForm.id ? 'Edit Task' : 'New Task'"></h3>
 
             <div class="space-y-4">
               <!-- Title -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-                <input type="text" x-model="taskForm.title" class="w-full border rounded-lg px-3 py-2" placeholder="What needs to be done?">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+                <input type="text" x-model="taskForm.title" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white" placeholder="What needs to be done?">
               </div>
 
               <!-- Description -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea x-model="taskForm.description" rows="3" class="w-full border rounded-lg px-3 py-2" placeholder="Add details (supports markdown)"></textarea>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <textarea x-model="taskForm.description" rows="3" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white" placeholder="Add details (supports markdown)"></textarea>
               </div>
 
               <!-- Tags & Points -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tags & Points</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags & Points</label>
                 <div class="space-y-2">
                   <template x-for="tag in tags" :key="tag.id">
-                    <div class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <span x-text="tag.icon"></span>
-                      <span class="flex-1 text-sm" x-text="tag.name"></span>
+                      <span class="flex-1 text-sm dark:text-white" x-text="tag.name"></span>
                       <div class="flex gap-1">
                         <template x-for="pts in [0, 1, 2, 3, 5, 8, 13, 21]" :key="pts">
-                          <button @click="setTaskPoints(tag.id, pts)" :class="(taskForm.tagPoints[tag.id] || 0) === pts ? 'bg-primary-600 text-white' : 'bg-white border'" class="w-7 h-7 rounded text-xs font-medium" x-text="pts || '×'"></button>
+                          <button @click="setTaskPoints(tag.id, pts)" :class="(taskForm.tagPoints[tag.id] || 0) === pts ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-600 border dark:border-gray-500 dark:text-white'" class="w-7 h-7 rounded text-xs font-medium" x-text="pts || '×'"></button>
                         </template>
                       </div>
                     </div>
@@ -713,35 +739,45 @@
                 </div>
               </div>
 
-              <!-- Recurrence -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Recurrence (optional)</label>
-                <div class="flex gap-2 mb-2">
-                  <button @click="applyRecurrencePreset('daily')" :class="taskForm.recurrencePreset === 'daily' ? 'ring-2 ring-primary-500' : ''" class="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200">Daily</button>
-                  <button @click="applyRecurrencePreset('weekdays')" :class="taskForm.recurrencePreset === 'weekdays' ? 'ring-2 ring-primary-500' : ''" class="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200">Weekdays</button>
-                  <button @click="applyRecurrencePreset('weekly-mon')" :class="taskForm.recurrencePreset === 'weekly-mon' ? 'ring-2 ring-primary-500' : ''" class="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200">Weekly (Mon)</button>
-                  <button @click="applyRecurrencePreset('monthly')" :class="taskForm.recurrencePreset === 'monthly' ? 'ring-2 ring-primary-500' : ''" class="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200">Monthly</button>
-                </div>
-                <input type="text" x-model="taskForm.recurrence" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="RRULE string (e.g., FREQ=DAILY)">
+              <!-- Recurrence Detection -->
+              <div x-data="{ detected: null }" x-effect="detected = parseRecurrenceFromTitle(taskForm.title)">
+                <template x-if="detected?.rrule || taskForm.recurrence">
+                  <div class="flex items-center gap-2 p-3 bg-primary-50 dark:bg-primary-900/30 rounded-lg border border-primary-200 dark:border-primary-800">
+                    <span class="text-primary-600 dark:text-primary-400" x-html="Icons.arrowPath"></span>
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-primary-700 dark:text-primary-300">Recurring Task</div>
+                      <div class="text-xs text-primary-600 dark:text-primary-400" x-text="describeRecurrence(detected?.rrule || taskForm.recurrence)"></div>
+                    </div>
+                    <button @click="taskForm.recurrence = ''; taskForm.title = detected?.cleanTitle || taskForm.title"
+                            class="text-primary-400 hover:text-primary-600 dark:text-primary-500 dark:hover:text-primary-300"
+                            x-show="detected?.rrule"
+                            title="Remove recurrence">
+                      <span x-html="Icons.xMark"></span>
+                    </button>
+                  </div>
+                </template>
+                <template x-if="!detected?.rrule && !taskForm.recurrence">
+                  <p class="text-xs text-gray-400 dark:text-gray-500">Tip: Add "every day", "weekly", or "every monday" to your title for recurring tasks</p>
+                </template>
               </div>
 
               <!-- Task Details (edit mode) -->
               <template x-if="taskForm.id && selectedTask">
-                <div class="border-t pt-4 space-y-3">
-                  <div class="text-sm text-gray-500">
+                <div class="border-t dark:border-gray-600 pt-4 space-y-3">
+                  <div class="text-sm text-gray-500 dark:text-gray-400">
                     <span>Created: </span><span x-text="formatDate(selectedTask.createdAt)"></span>
                     <span class="ml-4">Age: </span><span x-text="getTaskAge(selectedTask) + ' days'"></span>
                   </div>
-                  <div class="text-sm text-gray-500">
+                  <div class="text-sm text-gray-500 dark:text-gray-400">
                     <span>Total focus time: </span><span x-text="formatSessionTime(getTotalFocusTime(selectedTask.id))"></span>
                   </div>
 
                   <!-- Comments -->
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Comments</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Comments</label>
                     <div class="space-y-2 max-h-32 overflow-y-auto">
                       <template x-for="comment in selectedTask.comments" :key="comment.id">
-                        <div class="text-sm p-2 rounded" :class="comment.skipJustification ? 'bg-yellow-50 border-l-2 border-yellow-400' : 'bg-gray-50'">
+                        <div class="text-sm p-2 rounded dark:text-white" :class="comment.skipJustification ? 'bg-yellow-50 dark:bg-yellow-900/30 border-l-2 border-yellow-400' : 'bg-gray-50 dark:bg-gray-700'">
                           <div x-text="comment.content"></div>
                           <div class="text-xs text-gray-400 mt-1">
                             <span x-text="formatDate(comment.createdAt)"></span>
@@ -753,8 +789,8 @@
                       </template>
                     </div>
                     <div class="flex gap-2 mt-2" x-data="{ newComment: '' }">
-                      <input type="text" x-model="newComment" class="flex-1 border rounded px-2 py-1 text-sm" placeholder="Add comment...">
-                      <button @click="addComment(selectedTask.id, newComment); newComment = ''" class="px-3 py-1 bg-gray-100 rounded text-sm hover:bg-gray-200">Add</button>
+                      <input type="text" x-model="newComment" class="flex-1 border dark:border-gray-600 rounded px-2 py-1 text-sm dark:bg-gray-700 dark:text-white" placeholder="Add comment...">
+                      <button @click="addComment(selectedTask.id, newComment); newComment = ''" class="px-3 py-1 bg-gray-100 dark:bg-gray-700 dark:text-white rounded text-sm hover:bg-gray-200 dark:hover:bg-gray-600">Add</button>
                     </div>
                   </div>
                 </div>
@@ -762,7 +798,7 @@
             </div>
           </div>
 
-          <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+          <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
             <button @click="saveTask()" class="inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 sm:w-auto">
               <span x-text="taskForm.id ? 'Save Changes' : 'Create Task'"></span>
             </button>
@@ -771,7 +807,7 @@
                 Delete
               </button>
             </template>
-            <button @click="showTaskModal = false; resetTaskForm()" class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">
+            <button @click="showTaskModal = false; resetTaskForm()" class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-600 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500 sm:mt-0 sm:w-auto">
               Cancel
             </button>
           </div>
@@ -783,37 +819,37 @@
     <div x-show="showTagModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center">
         <div x-show="showTagModal" class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showTagModal = false"></div>
-        <div x-show="showTagModal" class="relative bg-white rounded-lg shadow-xl sm:w-full sm:max-w-md p-6">
-          <h3 class="text-lg font-semibold mb-4" x-text="tagForm.id ? 'Edit Tag' : 'New Tag'"></h3>
+        <div x-show="showTagModal" class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:w-full sm:max-w-md p-6">
+          <h3 class="text-lg font-semibold mb-4 dark:text-white" x-text="tagForm.id ? 'Edit Tag' : 'New Tag'"></h3>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input type="text" x-model="tagForm.name" class="w-full border rounded-lg px-3 py-2" :disabled="selectedTag?.name === 'untagged'">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+              <input type="text" x-model="tagForm.name" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white" :disabled="selectedTag?.name === 'untagged'">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <input type="text" x-model="tagForm.description" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <input type="text" x-model="tagForm.description" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white">
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
-                <input type="text" x-model="tagForm.icon" class="w-full border rounded-lg px-3 py-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Icon</label>
+                <input type="text" x-model="tagForm.icon" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                <input type="color" x-model="tagForm.color" class="w-full h-10 border rounded-lg">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                <input type="color" x-model="tagForm.color" class="w-full h-10 border dark:border-gray-600 rounded-lg">
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Default Capacity (pts/sprint)</label>
-              <input type="number" x-model="tagForm.defaultCapacity" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Capacity (pts/sprint)</label>
+              <input type="number" x-model="tagForm.defaultCapacity" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white">
             </div>
           </div>
           <div class="mt-6 flex justify-end gap-2">
             <template x-if="tagForm.id && selectedTag?.name !== 'untagged'">
               <button @click="confirmAction('Delete this tag?', () => deleteTag(tagForm.id))" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500">Delete</button>
             </template>
-            <button @click="showTagModal = false" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+            <button @click="showTagModal = false" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
             <button @click="saveTag()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-500">Save</button>
           </div>
         </div>
@@ -824,41 +860,41 @@
     <div x-show="showRoutineModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center">
         <div x-show="showRoutineModal" class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showRoutineModal = false"></div>
-        <div x-show="showRoutineModal" class="relative bg-white rounded-lg shadow-xl sm:w-full sm:max-w-lg p-6">
-          <h3 class="text-lg font-semibold mb-4" x-text="routineForm.id ? 'Edit Routine' : 'New Routine'"></h3>
+        <div x-show="showRoutineModal" class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:w-full sm:max-w-lg p-6">
+          <h3 class="text-lg font-semibold mb-4 dark:text-white" x-text="routineForm.id ? 'Edit Routine' : 'New Routine'"></h3>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input type="text" x-model="routineForm.name" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+              <input type="text" x-model="routineForm.name" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <input type="text" x-model="routineForm.description" class="w-full border rounded-lg px-3 py-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <input type="text" x-model="routineForm.description" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white">
             </div>
             <div class="grid grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
-                <input type="text" x-model="routineForm.icon" class="w-full border rounded-lg px-3 py-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Icon</label>
+                <input type="text" x-model="routineForm.icon" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                <input type="color" x-model="routineForm.color" class="w-full h-10 border rounded-lg">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                <input type="color" x-model="routineForm.color" class="w-full h-10 border dark:border-gray-600 rounded-lg">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Priority (1-10)</label>
-                <input type="number" x-model="routineForm.priority" min="1" max="10" class="w-full border rounded-lg px-3 py-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority (1-10)</label>
+                <input type="number" x-model="routineForm.priority" min="1" max="10" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white">
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Task Filter Expression</label>
-              <input type="text" x-model="routineForm.taskFilterExpression" class="w-full border rounded-lg px-3 py-2 font-mono text-sm" placeholder="hasTag('work') and points.total >= 3">
-              <p class="text-xs text-gray-500 mt-1">Available: hasTag('name'), points.total, age, status, inBacklog, inSprint</p>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task Filter Expression</label>
+              <input type="text" x-model="routineForm.taskFilterExpression" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 font-mono text-sm dark:bg-gray-700 dark:text-white" placeholder="hasTag('work') and points.total >= 3">
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Available: hasTag('name'), points.total, age, status, inBacklog, inSprint</p>
               <button @click="testRoutineExpression('filter')" class="text-xs text-primary-600 hover:underline mt-1">Test filter</button>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Activation Expression</label>
-              <input type="text" x-model="routineForm.activationExpression" class="w-full border rounded-lg px-3 py-2 font-mono text-sm" placeholder="isWeekday and hour >= 9 and hour < 17">
-              <p class="text-xs text-gray-500 mt-1">Available: dayOfWeek, hour, minute, isWeekday, isWeekend, date, month</p>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Activation Expression</label>
+              <input type="text" x-model="routineForm.activationExpression" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 font-mono text-sm dark:bg-gray-700 dark:text-white" placeholder="isWeekday and hour >= 9 and hour < 17">
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Available: dayOfWeek, hour, minute, isWeekday, isWeekend, date, month</p>
               <button @click="testRoutineExpression('activation')" class="text-xs text-primary-600 hover:underline mt-1">Test activation</button>
             </div>
           </div>
@@ -866,7 +902,7 @@
             <template x-if="routineForm.id">
               <button @click="confirmAction('Delete this routine?', () => deleteRoutine(routineForm.id))" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500">Delete</button>
             </template>
-            <button @click="showRoutineModal = false" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+            <button @click="showRoutineModal = false" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
             <button @click="saveRoutine()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-500">Save</button>
           </div>
         </div>
@@ -877,20 +913,20 @@
     <div x-show="showSessionCompleteModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
       <div class="flex min-h-full items-center justify-center p-4">
         <div x-show="showSessionCompleteModal" class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showSessionCompleteModal = false"></div>
-        <div x-show="showSessionCompleteModal" class="relative bg-white rounded-lg shadow-xl sm:w-full sm:max-w-sm p-6 text-center">
-          <h3 class="text-lg font-semibold mb-2">Session Complete!</h3>
-          <p class="text-gray-600 mb-4">Duration: <span class="font-mono" x-text="formatSessionTime(sessionElapsed)"></span></p>
-          <p class="text-sm text-gray-500 mb-4">How focused were you?</p>
+        <div x-show="showSessionCompleteModal" class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:w-full sm:max-w-sm p-6 text-center">
+          <h3 class="text-lg font-semibold mb-2 dark:text-white">Session Complete!</h3>
+          <p class="text-gray-600 dark:text-gray-300 mb-4">Duration: <span class="font-mono" x-text="formatSessionTime(sessionElapsed)"></span></p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">How focused were you?</p>
           <div class="flex justify-center gap-3">
-            <button @click="completeSession('distracted')" class="flex flex-col items-center p-3 bg-red-50 rounded-lg hover:bg-red-100">
+            <button @click="completeSession('distracted')" class="flex flex-col items-center p-3 bg-red-50 dark:bg-red-900/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 dark:text-white">
               <span class="text-2xl">😵</span>
               <span class="text-xs mt-1">Distracted</span>
             </button>
-            <button @click="completeSession('neutral')" class="flex flex-col items-center p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100">
+            <button @click="completeSession('neutral')" class="flex flex-col items-center p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/50 dark:text-white">
               <span class="text-2xl">😐</span>
               <span class="text-xs mt-1">Neutral</span>
             </button>
-            <button @click="completeSession('focused')" class="flex flex-col items-center p-3 bg-green-50 rounded-lg hover:bg-green-100">
+            <button @click="completeSession('focused')" class="flex flex-col items-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 dark:text-white">
               <span class="text-2xl">🎯</span>
               <span class="text-xs mt-1">Focused</span>
             </button>
@@ -903,12 +939,12 @@
     <div x-show="showSkipDayModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
       <div class="flex min-h-full items-center justify-center p-4">
         <div x-show="showSkipDayModal" class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showSkipDayModal = false"></div>
-        <div x-show="showSkipDayModal" class="relative bg-white rounded-lg shadow-xl sm:w-full sm:max-w-md p-6">
-          <h3 class="text-lg font-semibold mb-2">Skip for Today</h3>
-          <p class="text-sm text-gray-600 mb-4">This task will be hidden until tomorrow. Please provide a brief justification.</p>
-          <textarea x-model="skipJustification" rows="3" class="w-full border rounded-lg px-3 py-2" placeholder="Why are you skipping this task?"></textarea>
+        <div x-show="showSkipDayModal" class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:w-full sm:max-w-md p-6">
+          <h3 class="text-lg font-semibold mb-2 dark:text-white">Skip for Today</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">This task will be hidden until tomorrow. Please provide a brief justification.</p>
+          <textarea x-model="skipJustification" rows="3" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white" placeholder="Why are you skipping this task?"></textarea>
           <div class="mt-4 flex justify-end gap-2">
-            <button @click="showSkipDayModal = false; skipJustification = ''" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+            <button @click="showSkipDayModal = false; skipJustification = ''" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
             <button @click="skipTaskForDay(selectedTask?.id)" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-500">Skip</button>
           </div>
         </div>
@@ -919,11 +955,11 @@
     <div x-show="showConfirmModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
       <div class="flex min-h-full items-center justify-center p-4">
         <div x-show="showConfirmModal" class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showConfirmModal = false"></div>
-        <div x-show="showConfirmModal" class="relative bg-white rounded-lg shadow-xl sm:w-full sm:max-w-sm p-6">
-          <h3 class="text-lg font-semibold mb-2">Confirm</h3>
-          <p class="text-gray-600 mb-4" x-text="confirmMessage"></p>
+        <div x-show="showConfirmModal" class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:w-full sm:max-w-sm p-6">
+          <h3 class="text-lg font-semibold mb-2 dark:text-white">Confirm</h3>
+          <p class="text-gray-600 dark:text-gray-300 mb-4" x-text="confirmMessage"></p>
           <div class="flex justify-end gap-2">
-            <button @click="showConfirmModal = false" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+            <button @click="showConfirmModal = false" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
             <button @click="executeConfirmAction()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500">Confirm</button>
           </div>
         </div>
@@ -934,12 +970,12 @@
     <div x-show="showImportModal" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
       <div class="flex min-h-full items-center justify-center p-4">
         <div x-show="showImportModal" class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showImportModal = false"></div>
-        <div x-show="showImportModal" class="relative bg-white rounded-lg shadow-xl sm:w-full sm:max-w-lg p-6">
-          <h3 class="text-lg font-semibold mb-2">Import Data</h3>
-          <p class="text-sm text-gray-600 mb-4">Paste your JSON backup data below:</p>
-          <textarea x-model="importData" rows="10" class="w-full border rounded-lg px-3 py-2 font-mono text-sm" placeholder='{"version": "1.0", ...}'></textarea>
+        <div x-show="showImportModal" class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl sm:w-full sm:max-w-lg p-6">
+          <h3 class="text-lg font-semibold mb-2 dark:text-white">Import Data</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Paste your JSON backup data below:</p>
+          <textarea x-model="importData" rows="10" class="w-full border dark:border-gray-600 rounded-lg px-3 py-2 font-mono text-sm dark:bg-gray-700 dark:text-white" placeholder='{"version": "1.0", ...}'></textarea>
           <div class="mt-4 flex justify-end gap-2">
-            <button @click="showImportModal = false; importData = ''" class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+            <button @click="showImportModal = false; importData = ''" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
             <button @click="importData()" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-500">Import</button>
           </div>
         </div>
@@ -1020,6 +1056,128 @@
     const FIBONACCI_POINTS = [1, 2, 3, 5, 8, 13, 21];
     function isValidPoints(n) {
       return FIBONACCI_POINTS.includes(n);
+    }
+
+    // ============================================
+    // HEROICONS SVG ICONS
+    // ============================================
+    const Icons = {
+      check: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`,
+      checkCircle: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+      plus: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`,
+      clock: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+      play: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" /></svg>`,
+      forward: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062A1.125 1.125 0 013 16.81V8.688zM12.75 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062a1.125 1.125 0 01-1.683-.977V8.688z" /></svg>`,
+      calendar: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>`,
+      inbox: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661z" /></svg>`,
+      bolt: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`,
+      arrowPath: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>`,
+      tag: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" /></svg>`,
+      cog: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
+      chartBar: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>`,
+      sun: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>`,
+      moon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>`,
+      sparkles: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg>`,
+      xMark: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`,
+      trash: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`,
+      download: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>`,
+      upload: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>`,
+      home: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>`,
+      running: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>`,
+      // Solid versions for health indicators
+      checkSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" /></svg>`,
+      exclamationSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" /></svg>`,
+      xCircleSolid: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clip-rule="evenodd" /></svg>`,
+    };
+
+    // Helper to get icon with custom size
+    function getIcon(name, size = 'w-5 h-5') {
+      const svg = Icons[name] || '';
+      return svg.replace(/class="w-\d+ h-\d+"/, `class="${size}"`);
+    }
+
+    // ============================================
+    // NATURAL LANGUAGE RECURRENCE PARSER
+    // ============================================
+
+    const DAYS_MAP = {
+      'monday': 'MO', 'mon': 'MO',
+      'tuesday': 'TU', 'tue': 'TU', 'tues': 'TU',
+      'wednesday': 'WE', 'wed': 'WE',
+      'thursday': 'TH', 'thu': 'TH', 'thurs': 'TH',
+      'friday': 'FR', 'fri': 'FR',
+      'saturday': 'SA', 'sat': 'SA',
+      'sunday': 'SU', 'sun': 'SU',
+    };
+
+    const RECURRENCE_PATTERNS = [
+      // Daily patterns
+      { pattern: /\bevery\s+day\b/i, rrule: 'FREQ=DAILY' },
+      { pattern: /\bdaily\b/i, rrule: 'FREQ=DAILY' },
+      { pattern: /\bevery\s+(\d+)\s+days?\b/i, handler: (m) => `FREQ=DAILY;INTERVAL=${m[1]}` },
+
+      // Weekday patterns
+      { pattern: /\bevery\s+weekday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' },
+      { pattern: /\bon\s+weekdays\b/i, rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' },
+      { pattern: /\bweekdays\b/i, rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' },
+
+      // Weekend patterns
+      { pattern: /\bevery\s+weekend\b/i, rrule: 'FREQ=WEEKLY;BYDAY=SA,SU' },
+      { pattern: /\bon\s+weekends\b/i, rrule: 'FREQ=WEEKLY;BYDAY=SA,SU' },
+      { pattern: /\bweekends\b/i, rrule: 'FREQ=WEEKLY;BYDAY=SA,SU' },
+
+      // Specific day patterns (e.g., "every monday", "every mon and wed")
+      {
+        pattern: /\bevery\s+((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)(?:\s*(?:,|and)\s*(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun))*)\b/i,
+        handler: (m) => {
+          const daysStr = m[1].toLowerCase();
+          const days = daysStr.split(/\s*(?:,|and)\s*/).map(d => DAYS_MAP[d.trim()]).filter(Boolean);
+          return `FREQ=WEEKLY;BYDAY=${days.join(',')}`;
+        }
+      },
+
+      // Weekly patterns
+      { pattern: /\bevery\s+week\b/i, rrule: 'FREQ=WEEKLY' },
+      { pattern: /\bweekly\b/i, rrule: 'FREQ=WEEKLY' },
+      { pattern: /\bevery\s+(\d+)\s+weeks?\b/i, handler: (m) => `FREQ=WEEKLY;INTERVAL=${m[1]}` },
+
+      // Monthly patterns
+      { pattern: /\bevery\s+month\b/i, rrule: 'FREQ=MONTHLY' },
+      { pattern: /\bmonthly\b/i, rrule: 'FREQ=MONTHLY' },
+      { pattern: /\bevery\s+(\d+)\s+months?\b/i, handler: (m) => `FREQ=MONTHLY;INTERVAL=${m[1]}` },
+
+      // Yearly patterns
+      { pattern: /\bevery\s+year\b/i, rrule: 'FREQ=YEARLY' },
+      { pattern: /\byearly\b/i, rrule: 'FREQ=YEARLY' },
+      { pattern: /\bannually\b/i, rrule: 'FREQ=YEARLY' },
+
+      // "every other" patterns
+      { pattern: /\bevery\s+other\s+day\b/i, rrule: 'FREQ=DAILY;INTERVAL=2' },
+      { pattern: /\bevery\s+other\s+week\b/i, rrule: 'FREQ=WEEKLY;INTERVAL=2' },
+      { pattern: /\bevery\s+other\s+month\b/i, rrule: 'FREQ=MONTHLY;INTERVAL=2' },
+    ];
+
+    function parseRecurrenceFromTitle(title) {
+      for (const {pattern, rrule, handler} of RECURRENCE_PATTERNS) {
+        const match = title.match(pattern);
+        if (match) {
+          const rruleStr = handler ? handler(match) : rrule;
+          const cleanTitle = title.replace(match[0], '').replace(/\s+/g, ' ').trim();
+          return { rrule: rruleStr, cleanTitle, matchedText: match[0] };
+        }
+      }
+      return { rrule: null, cleanTitle: title, matchedText: null };
+    }
+
+    // Get human-readable description from RRULE
+    function describeRecurrence(rruleStr) {
+      if (!rruleStr) return '';
+      try {
+        const rule = rrule.RRule.fromString(rruleStr);
+        return rule.toText();
+      } catch (e) {
+        return rruleStr;
+      }
     }
 
     // ============================================
@@ -1749,6 +1907,11 @@
             return;
           }
 
+          // Parse recurrence from title (natural language like "every day", "weekly")
+          const { rrule: parsedRecurrence, cleanTitle } = parseRecurrenceFromTitle(form.title.trim());
+          const finalTitle = parsedRecurrence ? cleanTitle : form.title.trim();
+          const finalRecurrence = parsedRecurrence || form.recurrence || null;
+
           // Ensure at least one tag
           let tagPoints = { ...form.tagPoints };
           if (Object.keys(tagPoints).length === 0) {
@@ -1760,14 +1923,14 @@
 
           const task = {
             id: generateUUID(),
-            title: form.title.trim(),
+            title: finalTitle,
             description: form.description.trim(),
             status: 'active',
             tagPoints,
             location: { type: 'backlog' },
             createdAt: new Date().toISOString(),
             skipState: null,
-            recurrence: form.recurrence || null,
+            recurrence: finalRecurrence,
             parentId: null,
             comments: [],
             sessions: [],
@@ -1998,20 +2161,27 @@
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          // Look ahead 21 days (3 sprints)
-          const endDate = addDays(today, 21);
+          // Only look ahead 7 days to avoid too many instances
+          const endDate = addDays(today, 7);
 
           templates.forEach(template => {
             try {
+              // Create rule with dtstart set to today to avoid past occurrences
               const rule = rrule.RRule.fromString(template.recurrence);
               const occurrences = rule.between(today, endDate, true);
 
               occurrences.forEach(occDate => {
+                // Skip past dates (safety check)
+                if (occDate < today) return;
+
                 const occDateStr = toISODate(occDate);
 
-                // Check if instance already exists
+                // Check if instance already exists - check by title AND date to handle
+                // cases where template was recreated with different ID
                 const exists = this.tasks.some(t =>
-                  t.parentId === template.id &&
+                  !t.recurrence && // Not a template
+                  t.title === template.title &&
+                  t.status === 'active' &&
                   toISODate(new Date(t.createdAt)) === occDateStr
                 );
 

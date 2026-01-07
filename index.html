@@ -405,11 +405,19 @@
           <p class="text-xs font-medium opacity-50 uppercase mb-2">Active Routine</p>
           <select x-model="manualRoutineId" class="select select-bordered select-sm w-full">
             <option value="">Auto (based on time)</option>
+            <option value="__planning__">Planning (show all)</option>
             <template x-for="routine in routines" :key="routine.id">
               <option :value="routine.id" x-text="routine.icon + ' ' + routine.name"></option>
             </template>
           </select>
-          <template x-if="activeRoutine">
+          <template x-if="manualRoutineId === '__planning__'">
+            <div class="flex items-center gap-2 p-2 mt-2 rounded-lg bg-base-200">
+              <ion-icon name="clipboard-outline"></ion-icon>
+              <span class="font-medium text-sm">Planning Mode</span>
+              <span class="text-xs opacity-50 ml-auto">All tasks visible</span>
+            </div>
+          </template>
+          <template x-if="activeRoutine && manualRoutineId !== '__planning__'">
             <div class="flex items-center gap-2 p-2 mt-2 rounded-lg" :style="{ backgroundColor: activeRoutine.color + '15' }">
               <span x-text="activeRoutine.icon"></span>
               <span class="font-medium text-sm" x-text="activeRoutine.name" :style="{ color: activeRoutine.color }"></span>
@@ -1065,6 +1073,10 @@
         },
         
         get activeRoutine() {
+          // Planning mode - return null to show all tasks
+          if (this.manualRoutineId === '__planning__') {
+            return null;
+          }
           if (this.manualRoutineId) {
             return this.routines.find(r => r.id === this.manualRoutineId);
           }

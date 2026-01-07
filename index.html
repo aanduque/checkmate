@@ -34,8 +34,14 @@
 
   <!-- Alpine.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
-  
+
+  <!-- Ionicons -->
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
   <style>
+    /* Ionicons sizing */
+    ion-icon { font-size: 1.25rem; }
     [x-cloak] { display: none !important; }
     .task-card { transition: all 0.2s ease; }
     .task-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -57,7 +63,7 @@
     <header class="bg-white rounded-lg shadow-sm p-4 mb-6">
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-3">
-          <span class="text-3xl">♟️</span>
+          <ion-icon name="checkbox-outline" class="text-3xl text-indigo-600"></ion-icon>
           <div>
             <h1 class="text-2xl font-bold text-gray-800">Check Mate</h1>
             <p class="text-sm text-gray-500">ADHD-Focused Task Management</p>
@@ -71,7 +77,7 @@
                  :style="{ backgroundColor: activeRoutine.color + '20', color: activeRoutine.color }">
               <span x-text="activeRoutine.icon"></span>
               <span x-text="activeRoutine.name"></span>
-              <button @click="clearRoutineOverride()" class="ml-1 opacity-60 hover:opacity-100" title="Clear override">✕</button>
+              <button @click="clearRoutineOverride()" class="ml-1 opacity-60 hover:opacity-100" title="Clear override"><ion-icon name="close-outline"></ion-icon></button>
             </div>
           </template>
           
@@ -87,9 +93,9 @@
           <div class="text-sm text-gray-600" x-text="formatDate(today)"></div>
           
           <!-- Action Buttons -->
-          <button @click="showTagsModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Manage Tags">🏷️</button>
-          <button @click="showRoutinesModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Manage Routines">🔄</button>
-          <button @click="showSettingsModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Settings">⚙️</button>
+          <button @click="showTagsModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Manage Tags"><ion-icon name="pricetag-outline"></ion-icon></button>
+          <button @click="showRoutinesModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Manage Routines"><ion-icon name="sync-outline"></ion-icon></button>
+          <button @click="showSettingsModal = true" class="p-2 hover:bg-gray-100 rounded-lg" title="Settings"><ion-icon name="settings-outline"></ion-icon></button>
         </div>
       </div>
     </header>
@@ -99,7 +105,7 @@
       <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow-lg p-4 mb-6">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div class="flex items-center gap-4">
-            <div class="text-4xl">🎯</div>
+            <ion-icon name="radio-button-on-outline" class="text-4xl"></ion-icon>
             <div>
               <p class="text-sm opacity-80">Focusing on</p>
               <p class="font-bold text-lg" x-text="getTaskById(activeSession.taskId)?.title"></p>
@@ -111,8 +117,8 @@
               <p class="text-xs opacity-80">elapsed</p>
             </div>
             <div class="flex gap-2">
-              <button @click="openCompleteSessionModal()" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium">✓ Complete</button>
-              <button @click="abandonSession()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg">✕ Abandon</button>
+              <button @click="openCompleteSessionModal()" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium flex items-center gap-1"><ion-icon name="checkmark-outline"></ion-icon> Complete</button>
+              <button @click="abandonSession()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg flex items-center gap-1"><ion-icon name="close-outline"></ion-icon> Abandon</button>
             </div>
           </div>
         </div>
@@ -121,25 +127,25 @@
     
     <!-- Main Navigation Tabs -->
     <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-      <button @click="currentView = 'sprint'" 
+      <button @click="currentView = 'sprint'"
               :class="currentView === 'sprint' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm">
-        📅 Sprints
+              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
+        <ion-icon name="calendar-outline" class="mr-1"></ion-icon> Sprints
       </button>
-      <button @click="currentView = 'backlog'" 
+      <button @click="currentView = 'backlog'"
               :class="currentView === 'backlog' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm">
-        📋 Backlog <span class="text-xs opacity-70" x-text="'(' + backlogTasks.length + ')'"></span>
+              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
+        <ion-icon name="clipboard-outline" class="mr-1"></ion-icon> Backlog <span class="text-xs opacity-70 ml-1" x-text="'(' + backlogTasks.length + ')'"></span>
       </button>
-      <button @click="currentView = 'recurring'" 
+      <button @click="currentView = 'recurring'"
               :class="currentView === 'recurring' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm">
-        🔁 Recurring <span class="text-xs opacity-70" x-text="'(' + recurringTemplates.length + ')'"></span>
+              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
+        <ion-icon name="repeat-outline" class="mr-1"></ion-icon> Recurring <span class="text-xs opacity-70 ml-1" x-text="'(' + recurringTemplates.length + ')'"></span>
       </button>
-      <button @click="currentView = 'completed'" 
+      <button @click="currentView = 'completed'"
               :class="currentView === 'completed' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm">
-        ✅ Completed <span class="text-xs opacity-70" x-text="'(' + completedTasks.length + ')'"></span>
+              class="px-4 py-2 rounded-lg font-medium whitespace-nowrap shadow-sm flex items-center">
+        <ion-icon name="checkmark-circle-outline" class="mr-1"></ion-icon> Completed <span class="text-xs opacity-70 ml-1" x-text="'(' + completedTasks.length + ')'"></span>
       </button>
     </div>
     
@@ -177,6 +183,7 @@
           <button @click="selectedSprintIndex = index"
                   :class="selectedSprintIndex === index ? 'bg-white shadow-md ring-2 ring-indigo-500' : 'bg-gray-200/50 hover:bg-gray-200'"
                   class="px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+            <ion-icon :name="getSprintIcon(index)"></ion-icon>
             <span x-text="getSprintLabel(index)"></span>
             <span class="text-xs px-2 py-0.5 rounded-full"
                   :class="{
@@ -195,7 +202,7 @@
           <!-- Sprint Header -->
           <div class="flex items-start justify-between mb-6 flex-wrap gap-4">
             <div>
-              <h2 class="text-xl font-bold text-gray-800" x-text="getSprintLabel(selectedSprintIndex)"></h2>
+              <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><ion-icon :name="getSprintIcon(selectedSprintIndex)"></ion-icon> <span x-text="getSprintLabel(selectedSprintIndex)"></span></h2>
               <p class="text-sm text-gray-500">
                 <span x-text="formatDate(selectedSprint.startDate)"></span> - 
                 <span x-text="formatDate(selectedSprint.endDate)"></span>
@@ -243,18 +250,18 @@
                    }"
                    :style="!task.skipState ? { borderLeftColor: getTaskPrimaryTag(task)?.color || '#ccc' } : {}">
                 <div class="flex items-start justify-between gap-4">
-                  <div class="flex items-center gap-2 text-gray-400 cursor-grab" x-sort:handle>⠿</div>
+                  <div class="flex items-center gap-2 text-gray-400 cursor-grab" x-sort:handle><ion-icon name="reorder-three-outline"></ion-icon></div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 class="font-medium text-gray-800" x-text="task.title"></h3>
                       <template x-if="task.parentId">
-                        <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">🔁 instance</span>
+                        <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
                       </template>
                       <template x-if="task.skipState?.type === 'for_now'">
-                        <span class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">⏭️ Skipped</span>
+                        <span class="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="play-skip-forward-outline"></ion-icon> Skipped</span>
                       </template>
                       <template x-if="task.skipState?.type === 'for_day' && task.skipState?.returned">
-                        <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">🔙 Returned!</span>
+                        <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="arrow-undo-outline"></ion-icon> Returned!</span>
                       </template>
                     </div>
                     <div class="flex flex-wrap gap-1.5 mb-2">
@@ -274,21 +281,21 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-1">
-                    <button @click="startSession(task)" :disabled="activeSession" 
-                            class="p-2 hover:bg-white rounded-lg text-green-600 disabled:opacity-40" title="Start Session">▶️</button>
-                    <button @click="openTaskDetail(task)" class="p-2 hover:bg-white rounded-lg" title="Details">📝</button>
+                    <button @click="startSession(task)" :disabled="activeSession"
+                            class="p-2 hover:bg-white rounded-lg text-green-600 disabled:opacity-40" title="Start Session"><ion-icon name="play-outline"></ion-icon></button>
+                    <button @click="openTaskDetail(task)" class="p-2 hover:bg-white rounded-lg" title="Details"><ion-icon name="create-outline"></ion-icon></button>
                     <div class="relative" x-data="{ open: false }">
-                      <button @click="open = !open" class="p-2 hover:bg-white rounded-lg">⋮</button>
+                      <button @click="open = !open" class="p-2 hover:bg-white rounded-lg"><ion-icon name="ellipsis-vertical-outline"></ion-icon></button>
                       <div x-show="open" @click.away="open = false" x-transition
                            class="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
                         <template x-if="task.skipState">
-                          <button @click="clearSkipState(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">↩️ Clear skip</button>
+                          <button @click="clearSkipState(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="arrow-undo-outline"></ion-icon> Clear skip</button>
                         </template>
-                        <button @click="skipTaskForNow(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">⏭️ Skip for now</button>
-                        <button @click="openSkipForDayModal(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">📅 Skip for day</button>
-                        <button @click="completeTask(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-green-600">✅ Complete</button>
-                        <button @click="moveTaskToBacklog(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm">📋 To Backlog</button>
-                        <button @click="cancelTask(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-red-600">🗑️ Cancel</button>
+                        <button @click="skipTaskForNow(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="play-skip-forward-outline"></ion-icon> Skip for now</button>
+                        <button @click="openSkipForDayModal(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="calendar-outline"></ion-icon> Skip for day</button>
+                        <button @click="completeTask(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-green-600 flex items-center gap-2"><ion-icon name="checkmark-circle-outline"></ion-icon> Complete</button>
+                        <button @click="moveTaskToBacklog(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2"><ion-icon name="clipboard-outline"></ion-icon> To Backlog</button>
+                        <button @click="cancelTask(task); open = false" class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-red-600 flex items-center gap-2"><ion-icon name="trash-outline"></ion-icon> Cancel</button>
                       </div>
                     </div>
                   </div>
@@ -297,7 +304,7 @@
             </template>
             <template x-if="getSprintTasks(selectedSprint).length === 0">
               <div class="text-center py-12 text-gray-500">
-                <p class="text-4xl mb-2">📭</p>
+                <ion-icon name="mail-open-outline" class="text-4xl mb-2"></ion-icon>
                 <p>No tasks in this sprint</p>
                 <p class="text-sm">Move tasks from the backlog or create new ones</p>
               </div>
@@ -322,7 +329,7 @@
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 class="font-medium text-gray-800" x-text="task.title"></h3>
                   <template x-if="task.parentId">
-                    <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">🔁 instance</span>
+                    <span class="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> instance</span>
                   </template>
                 </div>
                 <template x-if="task.description">
@@ -345,27 +352,29 @@
               </div>
               <div class="flex items-center gap-1">
                 <div class="relative" x-data="{ open: false }">
-                  <button @click="open = !open" class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200">
-                    Move ▼
+                  <button @click="open = !open" class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 flex items-center gap-1">
+                    Move <ion-icon name="chevron-down-outline"></ion-icon>
                   </button>
                   <div x-show="open" @click.away="open = false" x-transition
                        class="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-20 py-1">
                     <template x-for="(sprint, index) in sprints" :key="sprint.id">
-                      <button @click="moveTaskToSprint(task, sprint); open = false" 
-                              class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
-                              x-text="getSprintLabel(index)"></button>
+                      <button @click="moveTaskToSprint(task, sprint); open = false"
+                              class="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm flex items-center gap-2">
+                        <ion-icon :name="getSprintIcon(index)"></ion-icon>
+                        <span x-text="getSprintLabel(index)"></span>
+                      </button>
                     </template>
                   </div>
                 </div>
-                <button @click="openTaskDetail(task)" class="p-2 hover:bg-gray-100 rounded-lg" title="Details">📝</button>
-                <button @click="cancelTask(task)" class="p-2 hover:bg-gray-100 rounded-lg text-red-500" title="Cancel">🗑️</button>
+                <button @click="openTaskDetail(task)" class="p-2 hover:bg-gray-100 rounded-lg" title="Details"><ion-icon name="create-outline"></ion-icon></button>
+                <button @click="cancelTask(task)" class="p-2 hover:bg-gray-100 rounded-lg text-red-500" title="Cancel"><ion-icon name="trash-outline"></ion-icon></button>
               </div>
             </div>
           </div>
         </template>
         <template x-if="filteredBacklogTasks.length === 0">
           <div class="text-center py-12 text-gray-500">
-            <p class="text-4xl mb-2">🎉</p>
+            <ion-icon name="trophy-outline" class="text-4xl mb-2"></ion-icon>
             <p>Backlog is empty!</p>
             <p class="text-sm">Create new tasks or check your filters</p>
           </div>
@@ -391,7 +400,7 @@
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="text-lg">🔁</span>
+                  <ion-icon name="repeat-outline" class="text-lg text-purple-600"></ion-icon>
                   <h3 class="font-medium text-gray-800" x-text="template.title"></h3>
                 </div>
                 <p class="text-sm text-purple-600 mb-2" x-text="describeRRule(template.recurrence)"></p>
@@ -414,15 +423,15 @@
                         class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200">
                   Spawn Now
                 </button>
-                <button @click="openTaskDetail(template)" class="p-2 hover:bg-gray-100 rounded-lg">📝</button>
-                <button @click="cancelTask(template)" class="p-2 hover:bg-gray-100 rounded-lg text-red-500">🗑️</button>
+                <button @click="openTaskDetail(template)" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="create-outline"></ion-icon></button>
+                <button @click="cancelTask(template)" class="p-2 hover:bg-gray-100 rounded-lg text-red-500"><ion-icon name="trash-outline"></ion-icon></button>
               </div>
             </div>
           </div>
         </template>
         <template x-if="recurringTemplates.length === 0">
           <div class="text-center py-12 text-gray-500">
-            <p class="text-4xl mb-2">🔁</p>
+            <ion-icon name="repeat-outline" class="text-4xl mb-2"></ion-icon>
             <p>No recurring templates</p>
             <p class="text-sm">Create recurring tasks for regular activities</p>
           </div>
@@ -443,7 +452,7 @@
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
-                  <span x-text="task.status === 'completed' ? '✅' : '❌'"></span>
+                  <ion-icon :name="task.status === 'completed' ? 'checkmark-circle-outline' : 'close-circle-outline'"></ion-icon>
                   <h3 class="font-medium text-gray-500 line-through" x-text="task.title"></h3>
                 </div>
                 <div class="flex flex-wrap gap-1.5">
@@ -456,13 +465,13 @@
                   </template>
                 </div>
               </div>
-              <button @click="openTaskDetail(task)" class="p-2 hover:bg-gray-100 rounded-lg">📝</button>
+              <button @click="openTaskDetail(task)" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="create-outline"></ion-icon></button>
             </div>
           </div>
         </template>
         <template x-if="completedTasks.length === 0">
           <div class="text-center py-12 text-gray-500">
-            <p class="text-4xl mb-2">📭</p>
+            <ion-icon name="hourglass-outline" class="text-4xl mb-2"></ion-icon>
             <p>No completed tasks yet</p>
           </div>
         </template>
@@ -585,9 +594,9 @@
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
               <div class="flex items-center gap-2 mb-1">
-                <span x-show="selectedTask.status === 'completed'" class="text-green-500">✅</span>
-                <span x-show="selectedTask.status === 'canceled'" class="text-red-500">❌</span>
-                <span x-show="selectedTask.recurrence" class="text-purple-500">🔁</span>
+                <ion-icon x-show="selectedTask.status === 'completed'" name="checkmark-circle-outline" class="text-green-500"></ion-icon>
+                <ion-icon x-show="selectedTask.status === 'canceled'" name="close-circle-outline" class="text-red-500"></ion-icon>
+                <ion-icon x-show="selectedTask.recurrence" name="repeat-outline" class="text-purple-500"></ion-icon>
                 <input type="text" x-model="selectedTask.title" @change="saveTaskDetail()"
                        class="text-xl font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none w-full"
                        :disabled="selectedTask.status !== 'active'">
@@ -598,7 +607,7 @@
                 <span x-text="getTaskAge(selectedTask) + ' days old'"></span>
               </div>
             </div>
-            <button @click="showTaskDetailModal = false; saveTaskDetail()" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+            <button @click="showTaskDetailModal = false; saveTaskDetail()" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
           </div>
           
           <!-- Description -->
@@ -633,7 +642,7 @@
           <!-- Recurrence Info -->
           <template x-if="selectedTask.recurrence">
             <div class="mb-6 p-4 bg-purple-50 rounded-lg">
-              <label class="block text-sm font-medium text-purple-700 mb-1">🔁 Recurrence Pattern</label>
+              <label class="block text-sm font-medium text-purple-700 mb-1 flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> Recurrence Pattern</label>
               <p class="text-purple-600" x-text="describeRRule(selectedTask.recurrence)"></p>
               <p class="text-xs text-purple-500 mt-1">Next: <span x-text="formatDate(getNextOccurrence(selectedTask))"></span></p>
             </div>
@@ -652,8 +661,8 @@
                 <div class="bg-gray-50 rounded-lg p-3 text-sm">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <span :class="{'text-green-500': session.status === 'completed', 'text-red-500': session.status === 'abandoned', 'text-blue-500': session.status === 'in_progress'}"
-                            x-text="session.status === 'completed' ? '✓' : session.status === 'abandoned' ? '✕' : '▶'"></span>
+                      <ion-icon :class="{'text-green-500': session.status === 'completed', 'text-red-500': session.status === 'abandoned', 'text-blue-500': session.status === 'in_progress'}"
+                            :name="session.status === 'completed' ? 'checkmark-outline' : session.status === 'abandoned' ? 'close-outline' : 'play-outline'"></ion-icon>
                       <span x-text="formatDate(new Date(session.startedAt))"></span>
                       <template x-if="session.endedAt">
                         <span class="text-gray-400" x-text="'(' + formatSessionTime(Math.floor((new Date(session.endedAt) - new Date(session.startedAt)) / 1000)) + ')'"></span>
@@ -687,7 +696,7 @@
                       <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="comment.content"></p>
                       <p class="text-xs text-gray-400 mt-1" x-text="formatDate(new Date(comment.createdAt))"></p>
                     </div>
-                    <button @click="deleteComment(selectedTask, comment)" class="text-red-400 hover:text-red-600 text-sm">🗑️</button>
+                    <button @click="deleteComment(selectedTask, comment)" class="text-red-400 hover:text-red-600 text-sm"><ion-icon name="trash-outline"></ion-icon></button>
                   </div>
                 </div>
               </template>
@@ -701,10 +710,10 @@
           
           <!-- Location & Parent -->
           <div class="text-sm text-gray-600">
-            <p>Location: <span class="font-medium" x-text="selectedTask.location.type === 'backlog' ? '📋 Backlog' : '📅 Sprint'"></span></p>
+            <p class="flex items-center gap-1">Location: <span class="font-medium flex items-center gap-1"><ion-icon :name="selectedTask.location.type === 'backlog' ? 'clipboard-outline' : 'calendar-outline'"></ion-icon> <span x-text="selectedTask.location.type === 'backlog' ? 'Backlog' : 'Sprint'"></span></span></p>
             <template x-if="selectedTask.parentId">
-              <p class="mt-1">
-                🔁 Instance of:
+              <p class="mt-1 flex items-center gap-1">
+                <ion-icon name="repeat-outline"></ion-icon> Instance of:
                 <span class="font-medium" x-text="getTaskById(selectedTask.parentId)?.title"></span>
               </p>
             </template>
@@ -741,11 +750,11 @@
           <label class="block text-sm font-medium text-gray-700 mb-2">How focused were you?</label>
           <div class="flex gap-2">
             <button @click="sessionFocusLevel = 'distracted'" :class="sessionFocusLevel === 'distracted' ? 'ring-2 ring-red-500' : ''"
-                    class="flex-1 p-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100">😵 Distracted</button>
+                    class="flex-1 p-3 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 flex items-center justify-center gap-1"><ion-icon name="sad-outline"></ion-icon> Distracted</button>
             <button @click="sessionFocusLevel = 'neutral'" :class="sessionFocusLevel === 'neutral' ? 'ring-2 ring-yellow-500' : ''"
-                    class="flex-1 p-3 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100">😐 Neutral</button>
+                    class="flex-1 p-3 rounded-lg bg-yellow-50 text-yellow-700 hover:bg-yellow-100 flex items-center justify-center gap-1"><ion-icon name="ellipse-outline"></ion-icon> Neutral</button>
             <button @click="sessionFocusLevel = 'focused'" :class="sessionFocusLevel === 'focused' ? 'ring-2 ring-green-500' : ''"
-                    class="flex-1 p-3 rounded-lg bg-green-50 text-green-700 hover:bg-green-100">🎯 Focused</button>
+                    class="flex-1 p-3 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 flex items-center justify-center gap-1"><ion-icon name="radio-button-on-outline"></ion-icon> Focused</button>
           </div>
         </div>
         <div class="mb-4">
@@ -834,7 +843,7 @@
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-bold">Manage Tags</h2>
-          <button @click="showTagsModal = false" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+          <button @click="showTagsModal = false" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
         </div>
         <div class="space-y-3 mb-6">
           <template x-for="tag in tags" :key="tag.id">
@@ -848,7 +857,7 @@
                   <input type="number" x-model.number="tag.defaultCapacity" @change="updateTag(tag)" class="w-16 border rounded px-2 py-1 text-sm" min="1">
                 </div>
               </div>
-              <button @click="deleteTag(tag)" :disabled="tag.id === 'untagged'" class="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-30">🗑️</button>
+              <button @click="deleteTag(tag)" :disabled="tag.id === 'untagged'" class="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-30"><ion-icon name="trash-outline"></ion-icon></button>
             </div>
           </template>
         </div>
@@ -872,7 +881,7 @@
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-bold">Manage Routines</h2>
-          <button @click="showRoutinesModal = false" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+          <button @click="showRoutinesModal = false" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
         </div>
         <p class="text-sm text-gray-600 mb-4">Routines auto-filter tasks based on time. Higher priority wins when multiple match.</p>
         <div class="space-y-3 mb-6">
@@ -899,7 +908,7 @@
                 </div>
                 <div class="flex items-center gap-1">
                   <input type="color" x-model="routine.color" @change="updateRoutine(routine)" class="w-8 h-8 rounded cursor-pointer">
-                  <button @click="deleteRoutine(routine)" class="p-2 text-red-500 hover:bg-red-50 rounded-lg">🗑️</button>
+                  <button @click="deleteRoutine(routine)" class="p-2 text-red-500 hover:bg-red-50 rounded-lg"><ion-icon name="trash-outline"></ion-icon></button>
                 </div>
               </div>
             </div>
@@ -945,7 +954,7 @@
       <div class="p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-bold">Settings</h2>
-          <button @click="showSettingsModal = false" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+          <button @click="showSettingsModal = false" class="p-2 hover:bg-gray-100 rounded-lg"><ion-icon name="close-outline"></ion-icon></button>
         </div>
         <div class="space-y-4">
           <div>
@@ -959,7 +968,7 @@
           </div>
           <div class="pt-4 border-t">
             <h3 class="font-medium text-red-600 mb-2">Danger Zone</h3>
-            <button @click="resetAllData()" class="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">🗑️ Reset All Data</button>
+            <button @click="resetAllData()" class="w-full px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2"><ion-icon name="trash-outline"></ion-icon> Reset All Data</button>
           </div>
         </div>
       </div>
@@ -1559,10 +1568,17 @@
         },
 
         getSprintLabel(index) {
-          if (index === 0) return '📅 Current Sprint';
-          if (index === 1) return '➡️ Next Sprint';
-          if (index === 2) return '⏭️ Sprint +2';
+          if (index === 0) return 'Current Sprint';
+          if (index === 1) return 'Next Sprint';
+          if (index === 2) return 'Sprint +2';
           return `Sprint ${index}`;
+        },
+
+        getSprintIcon(index) {
+          if (index === 0) return 'calendar-outline';
+          if (index === 1) return 'arrow-forward-outline';
+          if (index === 2) return 'play-skip-forward-outline';
+          return 'calendar-outline';
         },
         
         getDaysRemaining(sprint) {

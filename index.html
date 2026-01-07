@@ -820,9 +820,9 @@
           <!-- Tags & Points -->
           <div class="mb-6">
             <label class="label"><span class="label-text">Tags & Points</span></label>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 items-center">
               <template x-for="(points, tagId) in selectedTask.tagPoints" :key="tagId">
-                <div class="badge badge-lg gap-1" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
+                <div class="badge badge-lg gap-1 pr-1" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
                   <span x-text="getTagById(tagId)?.icon"></span>
                   <span x-text="getTagById(tagId)?.name"></span>
                   <select x-model="selectedTask.tagPoints[tagId]" @change="saveTaskDetail()"
@@ -832,6 +832,31 @@
                       <option :value="pt" x-text="pt + 'pt'"></option>
                     </template>
                   </select>
+                  <button x-show="selectedTask.status === 'active'"
+                          @click="removeTagFromTask(tagId)"
+                          class="btn btn-ghost btn-xs btn-circle h-5 w-5 min-h-0 opacity-60 hover:opacity-100 hover:bg-error/20">
+                    <ion-icon name="close-outline" class="text-sm"></ion-icon>
+                  </button>
+                </div>
+              </template>
+              <!-- Add Tag Dropdown -->
+              <template x-if="selectedTask.status === 'active' && getUnassignedTags().length > 0">
+                <div class="dropdown dropdown-end">
+                  <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-1">
+                    <ion-icon name="add-outline"></ion-icon>
+                    Add Tag
+                  </div>
+                  <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow-lg border border-base-300">
+                    <template x-for="tag in getUnassignedTags()" :key="tag.id">
+                      <li>
+                        <a @click="addTagToTask(tag.id); $el.closest('.dropdown').querySelector('[tabindex]').blur()" class="flex items-center gap-2">
+                          <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: tag.color }"></span>
+                          <span x-text="tag.icon"></span>
+                          <span x-text="tag.name"></span>
+                        </a>
+                      </li>
+                    </template>
+                  </ul>
                 </div>
               </template>
             </div>
@@ -2183,7 +2208,28 @@ Buy groceries"></textarea>
           actualTask.comments = actualTask.comments.filter(c => c.id !== comment.id);
           this.selectedTask = JSON.parse(JSON.stringify(actualTask));
         },
-        
+
+        getUnassignedTags() {
+          if (!this.selectedTask) return [];
+          return this.tags.filter(t => !this.selectedTask.tagPoints[t.id]);
+        },
+
+        addTagToTask(tagId) {
+          if (!this.selectedTask) return;
+          this.selectedTask.tagPoints[tagId] = 1;
+          this.saveTaskDetail();
+        },
+
+        removeTagFromTask(tagId) {
+          if (!this.selectedTask) return;
+          if (Object.keys(this.selectedTask.tagPoints).length <= 1) {
+            alert('Task must have at least one tag');
+            return;
+          }
+          delete this.selectedTask.tagPoints[tagId];
+          this.saveTaskDetail();
+        },
+
         spawnRecurringInstance(template) {
           const instance = {
             id: this.generateId(),

@@ -1213,6 +1213,13 @@
               { id: this.generateId(), name: 'Evening', icon: '🌙', color: '#8b5cf6', priority: 5, taskFilterExpression: 'hasAnyTag("Personal", "Health")', activationExpression: 'hour >= 18 or hour < 9' },
               { id: this.generateId(), name: 'Weekend', icon: '☀️', color: '#f59e0b', priority: 7, taskFilterExpression: 'hasAnyTag("Personal", "Health", "Learning")', activationExpression: 'isWeekend' }
             ];
+          } else {
+            // Migration: ensure all routines have taskFilterExpression
+            this.routines.forEach(routine => {
+              if (!routine.taskFilterExpression) {
+                routine.taskFilterExpression = 'true';
+              }
+            });
           }
         },
         

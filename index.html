@@ -1,10 +1,22 @@
 
 <!DOCTYPE html>
-<html lang="en" :data-theme="settings.theme || 'light'">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Check Mate - ADHD Task Manager</title>
+
+  <!-- Theme initialization (before CSS to prevent flash) -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('checkmate_theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
 
   <!-- daisyUI + Tailwind CSS v4 -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet">
@@ -90,9 +102,11 @@
           </template>
         </div>
         <div class="navbar-end gap-1">
-          <!-- Theme Toggle -->
+          <!-- Theme Toggle (using daisyUI theme-controller) -->
           <label class="swap swap-rotate btn btn-ghost btn-circle btn-sm">
-            <input type="checkbox" :checked="settings.theme === 'dark'" @change="settings.theme = $event.target.checked ? 'dark' : 'light'" />
+            <input type="checkbox" value="dark" class="theme-controller"
+                   @change="localStorage.setItem('checkmate_theme', $event.target.checked ? 'dark' : 'light')"
+                   :checked="document.documentElement.getAttribute('data-theme') === 'dark'" />
             <ion-icon name="sunny-outline" class="swap-off"></ion-icon>
             <ion-icon name="moon-outline" class="swap-on"></ion-icon>
           </label>

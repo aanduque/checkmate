@@ -1566,7 +1566,6 @@ Buy groceries #personal"></textarea>
 
         importTasks() {
           const parsed = this.parseImportText(this.importText);
-          const currentSprintId = this.sprints[0]?.id;
 
           parsed.forEach(item => {
             const tagPoints = {};
@@ -1583,7 +1582,7 @@ Buy groceries #personal"></textarea>
               title: item.title,
               description: '',
               tagPoints,
-              location: item.recurrence ? { type: 'backlog' } : { type: 'sprint', sprintId: currentSprintId },
+              location: { type: 'backlog' },
               status: 'active',
               order: this.tasks.length,
               createdAt: new Date().toISOString(),
@@ -1596,7 +1595,7 @@ Buy groceries #personal"></textarea>
           });
 
           this.importText = '';
-          console.log(`Imported ${parsed.length} tasks`);
+          console.log(`Imported ${parsed.length} tasks to backlog`);
         },
 
         // === DEV TOOLS ===

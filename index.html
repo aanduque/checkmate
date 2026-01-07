@@ -2794,9 +2794,17 @@ Buy groceries"></textarea>
 
         getCompletedTasksInRange(startDate, endDate) {
           return this.tasks.filter(t => {
-            if (t.status !== 'completed' || !t.completedAt) return false;
-            const completed = new Date(t.completedAt);
-            return completed >= startDate && completed < endDate;
+            // Include completed tasks
+            if (t.status === 'completed' && t.completedAt) {
+              const timestamp = new Date(t.completedAt);
+              return timestamp >= startDate && timestamp < endDate;
+            }
+            // Include canceled tasks
+            if (t.status === 'canceled' && t.canceledAt) {
+              const timestamp = new Date(t.canceledAt);
+              return timestamp >= startDate && timestamp < endDate;
+            }
+            return false;
           });
         },
 

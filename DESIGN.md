@@ -415,6 +415,8 @@ Queries retrieve data without side effects.
 
 ### Ports (Interfaces for Infrastructure)
 
+Ports define interfaces in the domain layer. Adapters implementing these ports live in `packages/infrastructure/src/adapters/`. See DEC-024 in DECISIONLOG.md.
+
 ```typescript
 // Persistence
 interface TaskRepository {

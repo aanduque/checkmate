@@ -16,6 +16,7 @@ Check Mate is an ADHD-friendly task management application being refactored from
 | Styling | Tailwind CSS + daisyUI |
 | Icons | Ionicons |
 | Backend | JSON-RPC Server (Bun) |
+| API Schema | OpenRPC (YAML → JSON → TypeScript) |
 
 ## Development Methodology
 
@@ -31,12 +32,32 @@ checkmate/
 ├── packages/
 │   ├── domain/           # Pure business logic (no dependencies)
 │   ├── application/      # Use cases (commands/queries)
-│   ├── infrastructure/   # Persistence, external services
-│   ├── server/           # JSON-RPC server
+│   ├── infrastructure/   # Persistence, adapters for external libs
+│   ├── shared/           # OpenRPC schema + generated types
+│   ├── server/           # JSON-RPC server (@open-rpc/server-js)
 │   └── client/           # React frontend
 ├── index.html            # POC reference (do not modify)
 └── PROJECT.md            # Detailed refactoring guide
 ```
+
+## Architecture
+
+**Hexagonal Architecture (Ports & Adapters):**
+- Domain layer defines ports (interfaces) for external capabilities
+- Infrastructure layer implements adapters using actual libraries
+- External libraries (Filtrex, RRule) never leak into domain
+
+```
+Domain Ports (interfaces):
+├── IFilterExpressionEvaluator    # For routine expressions
+├── IRecurrenceCalculator         # For recurring tasks
+
+Infrastructure Adapters:
+├── FiltrexExpressionEvaluator    # Implements via Filtrex
+├── RRuleRecurrenceCalculator     # Implements via RRule
+```
+
+See `DECISIONLOG.md` for detailed architecture decisions (DEC-021 through DEC-024).
 
 ## Common Commands
 
@@ -218,8 +239,11 @@ LocalStorage keys (POC reference):
 
 - POC source: `./index.html` (read-only reference)
 - Refactoring guide: `./PROJECT.md`
-- Crossroad docs: https://github.com/franciscop/crossroad
-- Statux docs: https://github.com/franciscop/statux
+- Decision log: `./DECISIONLOG.md`
+- Implementation plan: `./IMPLEMENTATION_PLAN.md`
+- Crossroad docs: https://crossroad.page/
+- Statux docs: https://statux.dev/
+- OpenRPC docs: https://open-rpc.org/
 - daisyUI docs: https://daisyui.com
 - Vitest docs: https://vitest.dev
 - Bun docs: https://bun.sh

@@ -2,8 +2,7 @@
  * Mock data for development until Stream B provides real API
  */
 
-import { TagDTO, TaskDTO, SprintDTO, FocusTaskDTO, DailyStatsDTO, WeeklyStatsDTO } from '../services/rpcClient';
-import { RoutineDTO } from '../store';
+import { TagDTO, TaskDTO, SprintDTO, FocusTaskDTO, DailyStatsDTO, WeeklyStatsDTO, RoutineDTO } from '../services/rpcClient';
 
 // Helper to generate dates
 const today = new Date();

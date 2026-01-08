@@ -68,6 +68,18 @@ export const taskApi = {
   skip: (id: string, type: 'for_now' | 'for_day', justification?: string) =>
     rpc.call('task.skip', { id, type, justification }),
 
+  update: (id: string, updates: { title?: string; description?: string; tagPoints?: Record<string, number> }) =>
+    rpc.call('task.update', { id, ...updates }),
+
+  move: (id: string, sprintId?: string) =>
+    rpc.call('task.move', { id, sprintId }),
+
+  addComment: (taskId: string, content: string) =>
+    rpc.call('task.addComment', { taskId, content }),
+
+  deleteComment: (taskId: string, commentId: string) =>
+    rpc.call('task.deleteComment', { taskId, commentId }),
+
   getKanban: (sprintId?: string) =>
     rpc.call<{
       backlog: TaskDTO[];
@@ -75,12 +87,15 @@ export const taskApi = {
       completed: TaskDTO[];
     }>('task.getKanban', { sprintId }),
 
-  getFocus: (sprintId: string) =>
+  getFocus: (sprintId?: string) =>
     rpc.call<{
       focusTask: FocusTaskDTO | null;
       upNext: FocusTaskDTO[];
       hiddenCount: number;
-    }>('task.getFocus', { sprintId })
+    }>('task.getFocus', { sprintId }),
+
+  getRecurringTemplates: () =>
+    rpc.call<{ templates: TaskDTO[] }>('task.getRecurringTemplates', {})
 };
 
 // Session methods
@@ -92,7 +107,18 @@ export const sessionApi = {
     }),
 
   end: (taskId: string, sessionId: string, focusLevel: 'distracted' | 'neutral' | 'focused') =>
-    rpc.call('session.end', { taskId, sessionId, focusLevel })
+    rpc.call('session.end', { taskId, sessionId, focusLevel }),
+
+  abandon: (taskId: string, sessionId: string) =>
+    rpc.call('session.abandon', { taskId, sessionId }),
+
+  addManual: (params: {
+    taskId: string;
+    startedAt: string;
+    endedAt: string;
+    focusLevel: 'distracted' | 'neutral' | 'focused';
+    note?: string;
+  }) => rpc.call('session.addManual', params)
 };
 
 // Tag methods
@@ -116,7 +142,13 @@ export const sprintApi = {
     rpc.call<SprintDTO | null>('sprint.getCurrent', {}),
 
   getUpcoming: (limit?: number) =>
-    rpc.call<SprintDTO[]>('sprint.getUpcoming', { limit })
+    rpc.call<SprintDTO[]>('sprint.getUpcoming', { limit }),
+
+  setCapacity: (sprintId: string, tagId: string, capacity: number) =>
+    rpc.call('sprint.setCapacity', { sprintId, tagId, capacity }),
+
+  getHealth: (sprintId: string) =>
+    rpc.call<SprintHealthDTO>('sprint.getHealth', { sprintId })
 };
 
 // Stats methods
@@ -126,6 +158,36 @@ export const statsApi = {
 
   getWeekly: (date?: string) =>
     rpc.call<WeeklyStatsDTO>('stats.getWeekly', { date })
+};
+
+// Routine methods
+export const routineApi = {
+  create: (params: {
+    name: string;
+    icon: string;
+    color: string;
+    priority: number;
+    taskFilterExpression: string;
+    activationExpression: string;
+  }) => rpc.call<RoutineDTO>('routine.create', params),
+
+  update: (id: string, updates: {
+    name?: string;
+    icon?: string;
+    color?: string;
+    priority?: number;
+    taskFilterExpression?: string;
+    activationExpression?: string;
+  }) => rpc.call<RoutineDTO>('routine.update', { id, ...updates }),
+
+  delete: (id: string) =>
+    rpc.call('routine.delete', { id }),
+
+  getAll: () =>
+    rpc.call<{ routines: RoutineDTO[] }>('routine.getAll', {}),
+
+  getActive: () =>
+    rpc.call<{ routine: RoutineDTO | null }>('routine.getActive', {})
 };
 
 // DTOs
@@ -191,4 +253,30 @@ export interface WeeklyStatsDTO {
     sessionsCount: number;
   }>;
   pointsByTag?: Record<string, number>;
+}
+
+export interface RoutineDTO {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  priority: number;
+  taskFilterExpression: string;
+  activationExpression: string;
+}
+
+export interface SprintHealthDTO {
+  overallStatus: 'on_track' | 'at_risk' | 'off_track';
+  totalPoints: number;
+  totalCapacity: number;
+  percentUsed: number;
+  daysRemaining: number;
+  tagHealth: Array<{
+    tagId: string;
+    tagName: string;
+    points: number;
+    capacity: number;
+    percentUsed: number;
+    status: 'on_track' | 'at_risk' | 'off_track';
+  }>;
 }

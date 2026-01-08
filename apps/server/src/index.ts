@@ -11,30 +11,54 @@ import { registerSessionMethods } from './methods/sessionMethods';
 import { registerTagMethods } from './methods/tagMethods';
 import { registerSprintMethods } from './methods/sprintMethods';
 import { registerStatsMethods } from './methods/statsMethods';
+import { registerRoutineMethods } from './methods/routineMethods';
 
 // Application handlers
 import {
+  // Task handlers
   CreateTaskHandler,
   CompleteTaskHandler,
   CancelTaskHandler,
   SkipTaskHandler,
+  UpdateTaskHandler,
+  MoveTaskToSprintHandler,
+  MoveTaskToBacklogHandler,
+  AddTaskCommentHandler,
+  DeleteTaskCommentHandler,
+  GetRecurringTemplatesHandler,
+  // Session handlers
   StartSessionHandler,
   EndSessionHandler,
+  AbandonSessionHandler,
+  AddManualSessionHandler,
+  // Query handlers
   GetKanbanBoardHandler,
   GetFocusTaskHandler,
+  GetStatsHandler,
+  // Tag handlers
   CreateTagHandler,
   GetAllTagsHandler,
+  // Sprint handlers
   CreateSprintHandler,
   GetCurrentSprintHandler,
   GetUpcomingSprintsHandler,
-  GetStatsHandler
+  SetSprintCapacityOverrideHandler,
+  GetSprintHealthHandler,
+  // Routine handlers
+  CreateRoutineHandler,
+  UpdateRoutineHandler,
+  DeleteRoutineHandler,
+  GetAllRoutinesHandler,
+  GetActiveRoutineHandler
 } from '@checkmate/application';
 
-// Infrastructure repositories
+// Infrastructure repositories & adapters
 import {
   LocalStorageTaskRepository,
   LocalStorageTagRepository,
-  LocalStorageSprintRepository
+  LocalStorageSprintRepository,
+  LocalStorageRoutineRepository,
+  FiltrexExpressionEvaluator
 } from '@checkmate/infrastructure';
 
 // Domain services
@@ -76,6 +100,10 @@ const storage = new MemoryStorage();
 const taskRepository = new LocalStorageTaskRepository(storage);
 const tagRepository = new LocalStorageTagRepository(storage);
 const sprintRepository = new LocalStorageSprintRepository(storage);
+const routineRepository = new LocalStorageRoutineRepository(storage);
+
+// Create infrastructure adapters
+const expressionEvaluator = new FiltrexExpressionEvaluator();
 
 // Create domain services
 const orderingService = new TaskOrderingService();
@@ -83,20 +111,46 @@ const statsCalculator = new StatsCalculator();
 
 // Create handlers
 const handlers = {
+  // Task handlers
   createTaskHandler: new CreateTaskHandler(taskRepository),
   completeTaskHandler: new CompleteTaskHandler(taskRepository),
   cancelTaskHandler: new CancelTaskHandler(taskRepository),
   skipTaskHandler: new SkipTaskHandler(taskRepository),
+  updateTaskHandler: new UpdateTaskHandler(taskRepository),
+  moveTaskToSprintHandler: new MoveTaskToSprintHandler(taskRepository, sprintRepository),
+  moveTaskToBacklogHandler: new MoveTaskToBacklogHandler(taskRepository),
+  addTaskCommentHandler: new AddTaskCommentHandler(taskRepository),
+  deleteTaskCommentHandler: new DeleteTaskCommentHandler(taskRepository),
+  getRecurringTemplatesHandler: new GetRecurringTemplatesHandler(taskRepository),
+
+  // Session handlers
   startSessionHandler: new StartSessionHandler(taskRepository),
   endSessionHandler: new EndSessionHandler(taskRepository),
+  abandonSessionHandler: new AbandonSessionHandler(taskRepository),
+  addManualSessionHandler: new AddManualSessionHandler(taskRepository),
+
+  // Query handlers
   getKanbanBoardHandler: new GetKanbanBoardHandler(taskRepository, sprintRepository, tagRepository),
   getFocusTaskHandler: new GetFocusTaskHandler(taskRepository, orderingService),
+  getStatsHandler: new GetStatsHandler(taskRepository, statsCalculator),
+
+  // Tag handlers
   createTagHandler: new CreateTagHandler(tagRepository),
   getAllTagsHandler: new GetAllTagsHandler(tagRepository),
+
+  // Sprint handlers
   createSprintHandler: new CreateSprintHandler(sprintRepository),
   getCurrentSprintHandler: new GetCurrentSprintHandler(sprintRepository),
   getUpcomingSprintsHandler: new GetUpcomingSprintsHandler(sprintRepository),
-  getStatsHandler: new GetStatsHandler(taskRepository, statsCalculator)
+  setSprintCapacityOverrideHandler: new SetSprintCapacityOverrideHandler(sprintRepository),
+  getSprintHealthHandler: new GetSprintHealthHandler(sprintRepository, taskRepository, tagRepository),
+
+  // Routine handlers
+  createRoutineHandler: new CreateRoutineHandler(routineRepository),
+  updateRoutineHandler: new UpdateRoutineHandler(routineRepository),
+  deleteRoutineHandler: new DeleteRoutineHandler(routineRepository),
+  getAllRoutinesHandler: new GetAllRoutinesHandler(routineRepository),
+  getActiveRoutineHandler: new GetActiveRoutineHandler(routineRepository, expressionEvaluator)
 };
 
 // Create RPC server
@@ -108,6 +162,7 @@ registerSessionMethods(rpcServer, handlers);
 registerTagMethods(rpcServer, handlers);
 registerSprintMethods(rpcServer, handlers);
 registerStatsMethods(rpcServer, handlers);
+registerRoutineMethods(rpcServer, handlers);
 
 // Start HTTP server
 const PORT = parseInt(process.env.PORT || '3001', 10);

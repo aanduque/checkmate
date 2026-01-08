@@ -5,18 +5,10 @@
  * Each top-level key becomes accessible via useStore('keyname').
  */
 
-import { TagDTO, TaskDTO, SprintDTO, FocusTaskDTO } from '../services/rpcClient';
+import { TagDTO, TaskDTO, SprintDTO, FocusTaskDTO, RoutineDTO } from '../services/rpcClient';
 
-// Routine types (until backend provides them)
-export interface RoutineDTO {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  priority: number;
-  taskFilterExpression: string;
-  activationExpression: string;
-}
+// Re-export RoutineDTO for backwards compatibility
+export type { RoutineDTO } from '../services/rpcClient';
 
 export interface AppState {
   // Data

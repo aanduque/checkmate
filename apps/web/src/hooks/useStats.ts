@@ -4,12 +4,11 @@
  */
 
 import { useCallback, useState, useEffect } from 'react';
-import { DailyStatsDTO, WeeklyStatsDTO, TagDTO } from '../services/rpcClient';
-import { mockDailyStats, mockWeeklyStats, mockTags } from '../mocks/mockData';
+import { DailyStatsDTO, WeeklyStatsDTO, TagDTO, statsApi } from '../services/rpcClient';
 import { useSelector } from 'statux';
 
-// Flag to use mock data
-const USE_MOCKS = true;
+// Environment flag - set to true to use mock data for development
+const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 export function useStats() {
   const [dailyStats, setDailyStats] = useState<DailyStatsDTO | null>(null);
@@ -18,33 +17,35 @@ export function useStats() {
   const [error, setError] = useState<string | null>(null);
   const tags = useSelector<TagDTO[]>('tags');
 
-  // Load stats on mount
-  useEffect(() => {
-    loadStats();
-  }, []);
-
   const loadStats = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       if (USE_MOCKS) {
-        // Simulate network delay
+        const { mockDailyStats, mockWeeklyStats } = await import('../mocks/mockData');
         await new Promise(resolve => setTimeout(resolve, 100));
         setDailyStats(mockDailyStats);
         setWeeklyStats(mockWeeklyStats);
       } else {
-        // TODO: Call RPC when backend ready
-        // const daily = await statsApi.getDaily();
-        // const weekly = await statsApi.getWeekly();
-        // setDailyStats(daily);
-        // setWeeklyStats(weekly);
+        // Call real RPC
+        const [daily, weekly] = await Promise.all([
+          statsApi.getDaily(),
+          statsApi.getWeekly()
+        ]);
+        setDailyStats(daily);
+        setWeeklyStats(weekly);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load stats');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Load stats on mount
+  useEffect(() => {
+    loadStats();
   }, []);
 
   // Format duration (seconds to human-readable)
@@ -68,7 +69,7 @@ export function useStats() {
 
   // Get last week's points for comparison
   const getLastWeekPoints = useCallback(() => {
-    // Mock: assume 80% of this week
+    // Mock: assume 80% of this week (would need separate API call for accurate comparison)
     return weeklyStats ? Math.floor(weeklyStats.pointsCompleted * 0.8) : 0;
   }, [weeklyStats]);
 

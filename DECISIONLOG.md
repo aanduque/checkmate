@@ -529,4 +529,145 @@ RRULE is an industry standard with:
 
 ---
 
+## DEC-021: Crossroad for Client-Side Routing
+
+**Date:** 2025-01-08
+**Status:** Accepted
+**Context:** The client needs URL-based navigation for views (Focus, Tasks, Stats, Settings).
+
+**Decision:**
+Use [Crossroad](https://crossroad.page/) for client-side routing.
+
+**Options Considered:**
+1. React Router — Industry standard, but 17kb bundle size
+2. Manual `useState` — Current approach, no URL persistence
+3. Crossroad (chosen) — 1.5kb, hooks-based, uses native `<a>` tags
+
+**Rationale:**
+- Minimal bundle size (~1.5kb vs 17kb for React Router)
+- Modern hooks API (`usePath`, `useQuery`, `useParams`)
+- Uses native `<a>` tags instead of custom `<Link>` components
+- Exact path matching by default (cleaner behavior)
+- Already specified in PROJECT.md
+
+**Consequences:**
+- Router wraps App in main.tsx
+- Navigation via standard anchor tags
+- URL reflects current view state
+- Infrastructure concern — Router setup in client entry point
+
+---
+
+## DEC-022: Statux for Global State Management
+
+**Date:** 2025-01-08
+**Status:** Accepted
+**Context:** Components need shared state for tasks, tags, sprints, UI state, and settings.
+
+**Decision:**
+Use [Statux](https://statux.dev/) for global state management.
+
+**Options Considered:**
+1. Redux — Proven but heavy boilerplate
+2. Zustand — Popular, minimal
+3. React Context + useState — Simple but verbose for complex state
+4. Statux (chosen) — Minimal, hooks-based, matches PROJECT.md spec
+
+**Rationale:**
+- Minimal boilerplate (`useStore`, `useSelector`, `useActions`)
+- Immutable state by default (Object.freeze)
+- Familiar API similar to useState but global
+- Small bundle size
+- Already specified in PROJECT.md
+
+**Consequences:**
+- Store wraps App in main.tsx with initial state
+- Components use `useStore()` for read/write, `useSelector()` for read-only
+- State structure defined in `packages/client/src/store/index.ts`
+- Infrastructure concern — Store setup in client entry point
+
+---
+
+## DEC-023: OpenRPC for API Schema and Type Generation
+
+**Date:** 2025-01-08
+**Status:** Accepted
+**Context:** Client and server share DTOs that are currently manually synchronized. As the API grows, maintaining type consistency becomes error-prone.
+
+**Decision:**
+Adopt [OpenRPC](https://open-rpc.org/) specification for the JSON-RPC API:
+- Schema written in YAML (converted to JSON at build time)
+- Use `@open-rpc/server-js` for server implementation
+- Use `@open-rpc/typings` to generate TypeScript types
+- Shared types live in `packages/shared`
+
+**Options Considered:**
+1. Manual DTO sync — Current approach, error-prone at scale
+2. Shared TypeScript package only — No runtime validation
+3. OpenRPC (chosen) — Schema-first, generated types, runtime validation
+
+**Rationale:**
+- Single source of truth for API contract
+- Auto-generated TypeScript types eliminate manual sync
+- Runtime parameter validation from schema
+- Self-documenting API (can generate docs)
+- YAML authoring is cleaner than JSON for large schemas
+- Prepares codebase for growth
+
+**Consequences:**
+- New `packages/shared` workspace for schema and generated types
+- Build step: YAML → JSON → TypeScript types
+- Server uses `@open-rpc/server-js` with method mapping
+- Client imports generated types from shared package
+- Infrastructure concern — OpenRPC is transport/infrastructure layer
+
+---
+
+## DEC-024: Hexagonal Architecture for External Libraries
+
+**Date:** 2025-01-08
+**Status:** Accepted
+**Context:** Libraries like Filtrex (DEC-007) and RRule (DEC-020) are implementation details that should not leak into the domain layer.
+
+**Decision:**
+External libraries are accessed via **ports (interfaces) in domain** and **adapters (implementations) in infrastructure**:
+
+```
+Domain Layer:
+├── ports/
+│   ├── IFilterExpressionEvaluator.ts  # Interface for Filtrex
+│   ├── IRecurrenceCalculator.ts       # Interface for RRule
+│   └── ...
+
+Infrastructure Layer:
+├── adapters/
+│   ├── FiltrexExpressionEvaluator.ts  # Implements via Filtrex
+│   ├── RRuleRecurrenceCalculator.ts   # Implements via RRule
+│   └── ...
+```
+
+**Rationale:**
+- Domain remains pure and testable without external dependencies
+- Libraries can be swapped without domain changes
+- Clear dependency direction (infrastructure → domain, never reverse)
+- Follows hexagonal/ports-and-adapters architecture
+- Domain tests use simple mocks/stubs
+
+**Libraries affected:**
+| Library | Port Interface | Adapter |
+|---------|----------------|---------|
+| Filtrex | `IFilterExpressionEvaluator` | `FiltrexExpressionEvaluator` |
+| RRule | `IRecurrenceCalculator` | `RRuleRecurrenceCalculator` |
+| OpenRPC | N/A (infrastructure only) | Server transport |
+| Crossroad | N/A (client infrastructure) | Router setup |
+| Statux | N/A (client infrastructure) | Store setup |
+
+**Consequences:**
+- Domain layer has zero runtime dependencies on external libs
+- Application layer receives adapters via dependency injection
+- Tests can provide fake implementations
+- Infrastructure package.json contains the actual library deps
+
+---
+
 *End of Decision Log*

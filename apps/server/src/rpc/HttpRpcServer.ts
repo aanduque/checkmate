@@ -2,24 +2,89 @@
  * HttpRpcServer - HTTP wrapper for JSON-RPC server
  *
  * Provides HTTP transport for the RpcServer with CORS support.
+ * Uses Hono for runtime-agnostic HTTP handling.
  */
 
-import { serve, type Server } from 'bun';
-import { RpcServer, type RpcRequest, type RpcResponse } from './RpcServer';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { RpcServer, type RpcResponse } from './RpcServer';
+
+interface ServerHandle {
+  stop: () => void;
+}
 
 export class HttpRpcServer {
-  private server: Server | null = null;
+  private app: Hono;
+  private server: ServerHandle | null = null;
 
-  constructor(private readonly rpcServer: RpcServer) {}
+  constructor(private readonly rpcServer: RpcServer) {
+    this.app = new Hono();
+    this.setupRoutes();
+  }
+
+  private setupRoutes(): void {
+    // CORS middleware
+    this.app.use('*', cors({
+      origin: '*',
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type']
+    }));
+
+    // JSON-RPC endpoint
+    this.app.post('/', async (c) => {
+      const body = await c.req.text();
+      const parsed = RpcServer.parseRequest(body);
+
+      let responseData: RpcResponse | RpcResponse[];
+
+      if ('error' in parsed) {
+        responseData = parsed;
+      } else if ('batch' in parsed) {
+        responseData = await this.rpcServer.handleBatch(parsed.batch);
+      } else {
+        responseData = await this.rpcServer.handle(parsed.request);
+      }
+
+      return c.json(responseData);
+    });
+
+    // Reject non-POST requests to root
+    this.app.all('/', (c) => {
+      return c.text('Method not allowed', 405);
+    });
+  }
+
+  /**
+   * Get the Hono app instance (for testing)
+   */
+  getApp(): Hono {
+    return this.app;
+  }
 
   /**
    * Start the HTTP server
    */
   start(port: number): void {
-    this.server = serve({
-      port,
-      fetch: async (req) => this.handleRequest(req)
-    });
+    // Use Bun.serve if available, otherwise fall back to node adapter
+    if (typeof Bun !== 'undefined') {
+      const server = Bun.serve({
+        port,
+        fetch: this.app.fetch
+      });
+      this.server = {
+        stop: () => server.stop()
+      };
+    } else {
+      // For Node.js environments, use the serve helper
+      const { serve } = require('@hono/node-server');
+      const server = serve({
+        fetch: this.app.fetch,
+        port
+      });
+      this.server = {
+        stop: () => server.close()
+      };
+    }
   }
 
   /**
@@ -37,53 +102,5 @@ export class HttpRpcServer {
    */
   isRunning(): boolean {
     return this.server !== null;
-  }
-
-  private async handleRequest(req: Request): Promise<Response> {
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    };
-
-    // Handle CORS preflight
-    if (req.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders
-      });
-    }
-
-    // Only allow POST
-    if (req.method !== 'POST') {
-      return new Response('Method not allowed', {
-        status: 405,
-        headers: corsHeaders
-      });
-    }
-
-    // Parse request body
-    const body = await req.text();
-    const parsed = RpcServer.parseRequest(body);
-
-    let responseData: RpcResponse | RpcResponse[];
-
-    if ('error' in parsed) {
-      // Parse error
-      responseData = parsed;
-    } else if ('batch' in parsed) {
-      // Batch request
-      responseData = await this.rpcServer.handleBatch(parsed.batch);
-    } else {
-      // Single request
-      responseData = await this.rpcServer.handle(parsed.request);
-    }
-
-    return new Response(JSON.stringify(responseData), {
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
-      }
-    });
   }
 }

@@ -12,11 +12,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@checkmate/domain": "workspace:*",
+    "crossroad": "^1.0.0",
+    "ionicons": "^8.0.13",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "statux": "^1.0.0",
-    "crossroad": "^1.0.0",
-    "@checkmate/domain": "workspace:*"
+    "statux": "^1.0.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.0.0",

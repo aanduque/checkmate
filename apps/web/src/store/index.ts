@@ -1,16 +1,29 @@
 /**
  * Statux Store Setup
  *
- * Global state management for Check Mate app
+ * Global state management for Check Mate app using Statux.
+ * Each top-level key becomes accessible via useStore('keyname').
  */
 
 import { TagDTO, TaskDTO, SprintDTO, FocusTaskDTO } from '../services/rpcClient';
+
+// Routine types (until backend provides them)
+export interface RoutineDTO {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  priority: number;
+  taskFilterExpression: string;
+  activationExpression: string;
+}
 
 export interface AppState {
   // Data
   tasks: TaskDTO[];
   tags: TagDTO[];
   sprints: SprintDTO[];
+  routines: RoutineDTO[];
   focusTask: FocusTaskDTO | null;
   upNext: FocusTaskDTO[];
 
@@ -32,6 +45,8 @@ export interface AppState {
       cancelTask: boolean;
       completeSession: boolean;
       addManualSession: boolean;
+      sprintHealth: boolean;
+      capacityEdit: boolean;
       tags: boolean;
       routines: boolean;
       settings: boolean;
@@ -41,9 +56,12 @@ export interface AppState {
     activeSession: {
       taskId: string;
       sessionId: string;
-      startedAt: Date;
+      startedAt: string; // ISO string for serialization
       durationMinutes: number;
     } | null;
+    manualRoutineId: string | null; // null = auto, '__planning__' = planning mode
+    drawerOpen: boolean;
+    sessionElapsed: number; // seconds elapsed in current session
   };
 }
 
@@ -51,6 +69,7 @@ export const initialState: AppState = {
   tasks: [],
   tags: [],
   sprints: [],
+  routines: [],
   focusTask: null,
   upNext: [],
 
@@ -70,12 +89,17 @@ export const initialState: AppState = {
       cancelTask: false,
       completeSession: false,
       addManualSession: false,
+      sprintHealth: false,
+      capacityEdit: false,
       tags: false,
       routines: false,
       settings: false,
       import: false
     },
     selectedTask: null,
-    activeSession: null
+    activeSession: null,
+    manualRoutineId: null,
+    drawerOpen: false,
+    sessionElapsed: 0
   }
 };

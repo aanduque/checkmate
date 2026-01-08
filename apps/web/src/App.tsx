@@ -1,52 +1,81 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
+import { Switch, Route, usePath } from 'crossroad';
+import { useStore } from 'statux';
+import { Navbar } from './components/layout/Navbar';
 import { Dock } from './components/layout/Dock';
+import { Drawer } from './components/layout/Drawer';
 import { FAB } from './components/layout/FAB';
+import { ActiveSessionBanner } from './components/layout/ActiveSessionBanner';
 import { FocusView } from './components/views/FocusView';
 import { TasksView } from './components/views/TasksView';
 import { StatsView } from './components/views/StatsView';
 import { SettingsView } from './components/views/SettingsView';
 import { CreateTaskModal } from './components/modals/CreateTaskModal';
 
-type View = 'focus' | 'tasks' | 'stats' | 'settings';
-
 export function App() {
-  const [currentView, setCurrentView] = useState<View>('focus');
-  const [showCreateTask, setShowCreateTask] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [path] = usePath();
+  const [ui, setUi] = useStore<typeof import('./store').initialState.ui>('ui');
 
-  const handleTaskCreated = useCallback(() => {
-    // Trigger refresh of views
-    setRefreshKey(k => k + 1);
-  }, []);
-
-  const renderView = () => {
-    switch (currentView) {
-      case 'focus':
-        return <FocusView key={refreshKey} />;
-      case 'tasks':
-        return <TasksView key={refreshKey} />;
-      case 'stats':
-        return <StatsView />;
-      case 'settings':
-        return <SettingsView />;
-      default:
-        return <FocusView key={refreshKey} />;
-    }
+  const handleOpenCreateTask = () => {
+    setUi((prev: typeof ui) => ({
+      ...prev,
+      modals: { ...prev.modals, createTask: true }
+    }));
   };
 
+  const handleCloseCreateTask = () => {
+    setUi((prev: typeof ui) => ({
+      ...prev,
+      modals: { ...prev.modals, createTask: false }
+    }));
+  };
+
+  const handleTaskCreated = () => {
+    setUi((prev: typeof ui) => ({
+      ...prev,
+      refreshKey: prev.refreshKey + 1,
+      modals: { ...prev.modals, createTask: false }
+    }));
+  };
+
+  // Determine current view for Dock highlighting based on path
+  const currentView = path === '/tasks' ? 'tasks'
+    : path === '/stats' ? 'stats'
+    : path === '/settings' ? 'settings'
+    : 'focus';
+
   return (
-    <div className="h-screen flex flex-col">
-      <main className="flex-1 overflow-y-auto pb-20">
-        {renderView()}
-      </main>
+    <div className="drawer drawer-end">
+      <input id="main-drawer" type="checkbox" className="drawer-toggle" />
 
-      <FAB onClick={() => setShowCreateTask(true)} />
+      {/* Main Content */}
+      <div className="drawer-content flex flex-col min-h-screen bg-base-200">
+        <Navbar />
 
-      <Dock currentView={currentView} onViewChange={setCurrentView} />
+        {/* Global Active Session Banner */}
+        <ActiveSessionBanner />
 
+        {/* Page Content */}
+        <main className="flex-1 pb-20">
+          <Switch redirect="/focus">
+            <Route path="/focus" component={FocusView} />
+            <Route path="/tasks" component={TasksView} />
+            <Route path="/stats" component={StatsView} />
+            <Route path="/settings" component={SettingsView} />
+          </Switch>
+        </main>
+
+        <FAB onClick={handleOpenCreateTask} />
+        <Dock currentView={currentView} />
+      </div>
+
+      {/* Drawer Sidebar */}
+      <Drawer />
+
+      {/* Modals */}
       <CreateTaskModal
-        isOpen={showCreateTask}
-        onClose={() => setShowCreateTask(false)}
+        isOpen={ui.modals.createTask}
+        onClose={handleCloseCreateTask}
         onCreated={handleTaskCreated}
       />
     </div>

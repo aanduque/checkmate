@@ -1,12 +1,47 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" class="overflow-x-hidden">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✓</text></svg>" />
     <title>Check Mate - ADHD Task Management</title>
+
+    <style>
+      /* Ionicons sizing */
+      ion-icon { font-size: 1.25rem; }
+
+      /* Task card animations */
+      .task-card { transition: all 0.2s ease; }
+      .task-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+      /* Health pulse animation */
+      .health-pulse { animation: pulse 2s infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+      /* Line clamp for truncation */
+      .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+      /* Drag and drop styles */
+      .sortable-ghost { opacity: 0.4; }
+      .sortable-drag { box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+      .sortable-chosen { cursor: grabbing; }
+
+      /* Kanban layout */
+      .kanban-container { display: flex; gap: 1rem; overflow-x: auto; min-height: 400px; }
+      .kanban-column { flex: 1; min-width: 250px; max-width: 400px; display: flex; flex-direction: column; }
+      .kanban-column-content { flex: 1; min-height: 100px; }
+      .kanban-task { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+      .kanban-task:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+      /* Mobile: stacked collapsible */
+      @media (max-width: 768px) {
+        .kanban-container { flex-direction: column; overflow-x: visible; min-height: auto; }
+        .kanban-column { max-width: none; min-width: auto; }
+        .kanban-column-content { min-height: 50px; }
+      }
+    </style>
   </head>
-  <body>
+  <body class="overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

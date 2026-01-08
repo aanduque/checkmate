@@ -1,0 +1,3129 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="light" class="overflow-x-hidden">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Check Mate - ADHD Task Manager</title>
+
+  <!-- Theme initialization (before CSS to prevent flash) -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('checkmate_theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
+  <!-- daisyUI + Tailwind CSS v4 -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Custom theme colors -->
+  <style type="text/tailwindcss">
+    @theme {
+      --color-on-track: #22c55e;
+      --color-at-risk: #eab308;
+      --color-off-track: #ef4444;
+    }
+  </style>
+
+  <!-- RRule for recurrence -->
+  <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
+
+  <!-- Filtrex for safe expression evaluation -->
+  <script src="https://cdn.jsdelivr.net/npm/filtrex@3.1.0/dist/browser/filtrex.min.js"></script>
+
+  <!-- Alpine Plugins -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3/dist/cdn.min.js"></script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+
+  <!-- SortableJS for drag-drop (used directly, not via Alpine) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+  <!-- Ionicons -->
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+  <style>
+    /* Ionicons sizing */
+    ion-icon { font-size: 1.25rem; }
+    [x-cloak] { display: none !important; }
+    .task-card { transition: all 0.2s ease; }
+    .task-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .health-pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* Drag and drop styles */
+    .sortable-ghost { opacity: 0.4; }
+    .sortable-drag { box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    .sortable-chosen { cursor: grabbing; }
+    /* Kanban layout */
+    .kanban-container { display: flex; gap: 1rem; overflow-x: auto; min-height: 400px; }
+    .kanban-column { flex: 1; min-width: 250px; max-width: 400px; display: flex; flex-direction: column; }
+    .kanban-column-content { flex: 1; min-height: 100px; }
+    .kanban-task { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .kanban-task:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    /* Mobile: stacked collapsible */
+    @media (max-width: 768px) {
+      .kanban-container { flex-direction: column; overflow-x: visible; min-height: auto; }
+      .kanban-column { max-width: none; min-width: auto; }
+      .kanban-column-content { min-height: 50px; }
+    }
+  </style>
+</head>
+<body class="bg-base-200 min-h-screen pb-20 overflow-x-hidden" x-cloak x-data="checkMate()" x-init="init()">
+
+  <!-- Main Drawer Layout -->
+  <div class="drawer drawer-end">
+    <input id="main-drawer" type="checkbox" class="drawer-toggle" />
+
+    <!-- Main Content -->
+    <div class="drawer-content flex flex-col">
+
+      <!-- Minimal Navbar -->
+      <div class="navbar bg-base-100 shadow-sm sticky top-0 z-10">
+        <div class="navbar-start gap-2">
+          <ion-icon name="checkbox-outline" class="text-2xl text-primary"></ion-icon>
+          <span class="font-bold text-lg">Check Mate</span>
+        </div>
+        <div class="navbar-center">
+          <template x-if="activeRoutine">
+            <div class="badge gap-1" :style="{ backgroundColor: activeRoutine.color + '20', color: activeRoutine.color }">
+              <span x-text="activeRoutine.icon"></span>
+              <span x-text="activeRoutine.name" class="hidden sm:inline"></span>
+            </div>
+          </template>
+        </div>
+        <div class="navbar-end gap-1">
+          <!-- Theme Toggle (using daisyUI theme-controller) -->
+          <label class="swap swap-rotate btn btn-ghost btn-circle btn-sm">
+            <input type="checkbox" value="dark" class="theme-controller"
+                   @change="localStorage.setItem('checkmate_theme', $event.target.checked ? 'dark' : 'light')"
+                   :checked="document.documentElement.getAttribute('data-theme') === 'dark'" />
+            <ion-icon name="sunny-outline" class="swap-off"></ion-icon>
+            <ion-icon name="moon-outline" class="swap-on"></ion-icon>
+          </label>
+          <!-- Drawer Toggle -->
+          <label for="main-drawer" class="btn btn-ghost btn-circle btn-sm">
+            <ion-icon name="menu-outline"></ion-icon>
+          </label>
+        </div>
+      </div>
+
+      <!-- Page Content -->
+      <div class="flex-1 p-4 mx-auto w-full" :class="currentView === 'tasks' ? 'max-w-6xl' : 'max-w-2xl'">
+
+        <!-- Active Session Banner (shown in any view) -->
+        <template x-if="activeSession">
+          <div class="alert alert-info shadow-lg mb-4">
+            <ion-icon name="radio-button-on-outline" class="text-2xl animate-pulse"></ion-icon>
+            <div class="flex-1">
+              <p class="text-sm opacity-80">Focusing on</p>
+              <p class="font-bold" x-text="getTaskById(activeSession.taskId)?.title"></p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl font-mono font-bold" x-text="formatSessionTime(sessionElapsed)"></p>
+            </div>
+            <div class="flex gap-1">
+              <button @click="openCompleteSessionModal()" class="btn btn-success btn-sm btn-circle"><ion-icon name="checkmark-outline"></ion-icon></button>
+              <button @click="abandonSession()" class="btn btn-ghost btn-sm btn-circle"><ion-icon name="close-outline"></ion-icon></button>
+            </div>
+          </div>
+        </template>
+
+        <!-- ==================== FOCUS VIEW ==================== -->
+        <div x-show="currentView === 'focus'" class="space-y-4">
+          <!-- Hero: Focus on ONE task -->
+          <template x-if="focusTask">
+            <div class="hero bg-base-100 rounded-box shadow-sm py-8">
+              <div class="hero-content text-center flex-col">
+                <div class="max-w-md">
+                  <p class="text-sm opacity-60 mb-2">Focus on this now</p>
+                  <h1 class="text-2xl font-bold mb-4" x-text="focusTask.title"></h1>
+                  <div class="flex flex-wrap justify-center gap-2 mb-6">
+                    <template x-for="(points, tagId) in focusTask.tagPoints" :key="tagId">
+                      <span class="badge badge-lg" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                        <span x-text="getTagById(tagId)?.icon" class="mr-1"></span>
+                        <span x-text="getTagById(tagId)?.name"></span>
+                      </span>
+                    </template>
+                  </div>
+                  <div class="flex justify-center gap-2">
+                    <button @click="startSession(focusTask)" :disabled="activeSession" class="btn btn-primary btn-lg gap-2">
+                      <ion-icon name="play-outline"></ion-icon> Start Focus
+                    </button>
+                    <button @click="completeTask(focusTask)" class="btn btn-success btn-lg gap-2">
+                      <ion-icon name="checkmark-outline"></ion-icon> Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- No focus task -->
+          <template x-if="!focusTask">
+            <div class="hero bg-base-100 rounded-box shadow-sm py-12">
+              <div class="hero-content text-center">
+                <div class="max-w-md">
+                  <ion-icon name="checkmark-circle-outline" class="text-6xl text-success mb-4"></ion-icon>
+                  <h1 class="text-2xl font-bold mb-2">All Clear!</h1>
+                  <p class="opacity-70 mb-4">No tasks in your current sprint. Add some tasks to get started.</p>
+                  <button @click="showCreateTaskModal = true" class="btn btn-primary gap-2">
+                    <ion-icon name="add-outline"></ion-icon> Add Task
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Quick actions for focus task -->
+          <template x-if="focusTask">
+            <div class="flex justify-center gap-2">
+              <button @click="skipTaskForNow(focusTask)" class="btn btn-ghost btn-sm gap-1">
+                <ion-icon name="play-skip-forward-outline"></ion-icon> Skip for now
+              </button>
+              <button @click="openSkipForDayModal(focusTask)" class="btn btn-ghost btn-sm gap-1">
+                <ion-icon name="calendar-outline"></ion-icon> Skip for day
+              </button>
+              <button @click="openTaskDetail(focusTask)" class="btn btn-ghost btn-sm gap-1">
+                <ion-icon name="create-outline"></ion-icon> Details
+              </button>
+            </div>
+          </template>
+
+          <!-- Up next preview -->
+          <template x-if="upNextTasks.length > 0">
+            <div class="mt-6">
+              <p class="text-sm opacity-60 mb-2 text-center">Up next</p>
+              <div class="space-y-2">
+                <template x-for="task in upNextTasks.slice(0, 3)" :key="task.id">
+                  <div class="card bg-base-100 shadow-sm">
+                    <div class="card-body p-3 flex-row items-center gap-3">
+                      <div class="w-1 h-8 rounded-full" :style="{ backgroundColor: getTaskPrimaryTag(task)?.color }"></div>
+                      <span class="flex-1 font-medium truncate" x-text="task.title"></span>
+                      <button @click="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs">
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- ==================== TASKS VIEW (Kanban Board) ==================== -->
+        <div x-show="currentView === 'tasks'" x-init="$nextTick(() => initKanban())">
+
+          <!-- Desktop: Kanban columns | Mobile: Collapsible sections -->
+          <div class="kanban-container">
+
+            <!-- Backlog Column -->
+            <div class="kanban-column">
+              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
+                <input type="checkbox" class="md:hidden" />
+                <div class="collapse-title font-medium flex items-center gap-2 py-3">
+                  <ion-icon name="file-tray-stacked-outline" class="text-accent"></ion-icon>
+                  <span>Backlog</span>
+                  <span class="badge badge-sm badge-accent" x-text="backlogTasks.length"></span>
+                </div>
+                <div class="collapse-content p-0">
+                  <!-- Regular backlog tasks (draggable) -->
+                  <div id="kanban-backlog" data-column="backlog" class="kanban-column-content space-y-2 p-2 bg-base-200/50 min-h-[50px]">
+                    <template x-for="task in backlogTasks" :key="task.id">
+                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm border-l-4" :style="{ borderLeftColor: getTaskPrimaryTag(task)?.color || '#888' }">
+                        <div class="flex items-center gap-2">
+                          <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                          </div>
+                          <div class="flex items-center gap-1 flex-shrink-0">
+                            <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                              <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                <span x-text="points"></span>
+                              </span>
+                            </template>
+                            <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs">
+                              <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+
+                  <!-- Recurring Templates (NOT draggable) -->
+                  <template x-if="recurringTemplates.length > 0">
+                    <div class="border-t border-base-300">
+                      <div class="px-3 py-2 text-xs font-medium opacity-60 flex items-center gap-1 bg-base-200/30">
+                        <ion-icon name="repeat-outline"></ion-icon>
+                        <span>Recurring Templates</span>
+                        <span class="badge badge-xs" x-text="recurringTemplates.length"></span>
+                      </div>
+                      <div class="space-y-2 p-2 bg-base-200/50 rounded-b-lg">
+                        <template x-for="task in recurringTemplates" :key="task.id">
+                          <div @click="openTaskDetail(task)" class="kanban-task bg-base-100 rounded-lg p-3 cursor-pointer shadow-sm border-l-4 border-secondary">
+                            <div class="flex items-start gap-2">
+                              <div class="flex-1 min-w-0">
+                                <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                                <p class="text-xs opacity-60 mt-1" x-text="describeRRule(task.recurrence)"></p>
+                                <div class="flex items-center gap-1 mt-1 flex-wrap">
+                                  <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                                    <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                      <span x-text="points"></span>
+                                    </span>
+                                  </template>
+                                </div>
+                              </div>
+                              <ion-icon name="chevron-forward-outline" class="opacity-40 flex-shrink-0"></ion-icon>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- This Week (Sprint 0) -->
+            <div class="kanban-column">
+              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
+                <input type="checkbox" class="md:hidden" checked />
+                <div class="collapse-title font-medium flex items-center gap-2 py-3">
+                  <ion-icon name="calendar-outline" class="text-primary"></ion-icon>
+                  <span>This Week</span>
+                  <span class="badge badge-sm badge-primary" x-text="getKanbanSprintTasks(0).length"></span>
+                  <span class="badge badge-xs ml-auto"
+                        :class="{
+                          'badge-success': sprints[0] && getSprintHealth(sprints[0]).overall === 'on_track',
+                          'badge-warning': sprints[0] && getSprintHealth(sprints[0]).overall === 'at_risk',
+                          'badge-error': sprints[0] && getSprintHealth(sprints[0]).overall === 'off_track'
+                        }"
+                        x-text="sprints[0] ? getDaysRemaining(sprints[0]) + 'd' : ''"></span>
+                </div>
+                <div class="collapse-content p-0">
+                  <div id="kanban-sprint-0" x-bind:data-column="sprints[0]?.id" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
+                    <template x-for="task in getKanbanSprintTasks(0)" :key="task.id">
+                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm border-l-4" :class="{ 'opacity-50': task.skipState }" :style="{ borderLeftColor: getTaskPrimaryTag(task)?.color || '#888' }">
+                        <div class="flex items-center gap-2">
+                          <button @click.stop="completeTask(task)" class="btn btn-ghost btn-circle btn-xs flex-shrink-0">
+                            <ion-icon name="ellipse-outline" class="text-base"></ion-icon>
+                          </button>
+                          <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                          </div>
+                          <div class="flex items-center gap-1 flex-shrink-0">
+                            <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                              <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                <span x-text="points"></span>
+                              </span>
+                            </template>
+                            <span x-show="task.skipState" class="badge badge-xs badge-warning">skipped</span>
+                            <button @click.stop="startSession(task)" :disabled="activeSession" class="btn btn-ghost btn-circle btn-xs text-success">
+                              <ion-icon name="play-outline"></ion-icon>
+                            </button>
+                            <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs">
+                              <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Next Week (Sprint 1) -->
+            <div class="kanban-column">
+              <div class="collapse collapse-arrow bg-base-100 shadow-sm md:collapse-open">
+                <input type="checkbox" class="md:hidden" />
+                <div class="collapse-title font-medium flex items-center gap-2 py-3">
+                  <ion-icon name="arrow-forward-outline" class="text-secondary"></ion-icon>
+                  <span>Next Week</span>
+                  <span class="badge badge-sm badge-secondary" x-text="getKanbanSprintTasks(1).length"></span>
+                </div>
+                <div class="collapse-content p-0">
+                  <div id="kanban-sprint-1" x-bind:data-column="sprints[1]?.id" class="kanban-column-content space-y-2 p-2 bg-base-200/50 rounded-b-lg min-h-[100px]">
+                    <template x-for="task in getKanbanSprintTasks(1)" :key="task.id">
+                      <div :data-id="task.id" class="kanban-task bg-base-100 rounded-lg p-3 cursor-grab active:cursor-grabbing shadow-sm border-l-4" :style="{ borderLeftColor: getTaskPrimaryTag(task)?.color || '#888' }">
+                        <div class="flex items-center gap-2">
+                          <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="task.title"></p>
+                          </div>
+                          <div class="flex items-center gap-1 flex-shrink-0">
+                            <template x-for="(points, tagId) in task.tagPoints" :key="tagId">
+                              <span class="badge badge-xs" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color }">
+                                <span x-text="points"></span>
+                              </span>
+                            </template>
+                            <button @click.stop="openTaskDetail(task)" class="btn btn-ghost btn-circle btn-xs">
+                              <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ==================== STATS VIEW ==================== -->
+        <div x-show="currentView === 'stats'" class="p-4 pb-24 space-y-4">
+
+          <!-- Today's Progress -->
+          <div class="stats stats-vertical md:stats-horizontal shadow w-full bg-base-100">
+            <div class="stat">
+              <div class="stat-figure text-primary">
+                <ion-icon name="checkmark-circle-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Tasks Today</div>
+              <div class="stat-value text-primary" x-text="getTodayCompletedTasks().length"></div>
+              <div class="stat-desc">
+                <span x-show="getYesterdayCompletedTasks().length > 0">
+                  <span x-text="getTodayCompletedTasks().length >= getYesterdayCompletedTasks().length ? '↗︎' : '↘︎'"></span>
+                  vs <span x-text="getYesterdayCompletedTasks().length"></span> yesterday
+                </span>
+                <span x-show="getYesterdayCompletedTasks().length === 0">No tasks yesterday</span>
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-secondary">
+                <ion-icon name="star-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Points Today</div>
+              <div class="stat-value text-secondary" x-text="getTodayPoints()"></div>
+              <div class="stat-desc">
+                <template x-if="getTopPointsTag()">
+                  <span>
+                    Top: <span x-text="getTopPointsTag()?.name"></span>
+                  </span>
+                </template>
+                <template x-if="!getTopPointsTag()">
+                  <span>Complete tasks to earn</span>
+                </template>
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-accent">
+                <ion-icon name="time-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Focus Time</div>
+              <div class="stat-value text-accent" x-text="formatDuration(getTodayFocusTime())"></div>
+              <div class="stat-desc" x-text="getTodaySessions().length + ' session' + (getTodaySessions().length !== 1 ? 's' : '')"></div>
+            </div>
+          </div>
+
+          <!-- Weekly Summary -->
+          <div class="stats stats-vertical md:stats-horizontal shadow w-full bg-base-100">
+            <div class="stat">
+              <div class="stat-figure text-info">
+                <ion-icon name="calendar-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">This Week</div>
+              <div class="stat-value" x-text="getWeekCompletedTasks().length"></div>
+              <div class="stat-desc">
+                <span x-text="getWeekPoints()"></span> points earned
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure">
+                <ion-icon name="trending-up-outline" class="text-3xl" :class="getWeekPoints() >= getLastWeekPoints() ? 'text-success' : 'text-warning'"></ion-icon>
+              </div>
+              <div class="stat-title">vs Last Week</div>
+              <div class="stat-value" :class="getWeekPoints() >= getLastWeekPoints() ? 'text-success' : 'text-warning'">
+                <span x-text="getWeekPoints() >= getLastWeekPoints() ? '+' : ''"></span><span x-text="getWeekPoints() - getLastWeekPoints()"></span>
+              </div>
+              <div class="stat-desc">
+                <span x-text="getLastWeekPoints()"></span> points last week
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="stat-figure text-warning">
+                <ion-icon name="flame-outline" class="text-3xl"></ion-icon>
+              </div>
+              <div class="stat-title">Streak</div>
+              <div class="stat-value text-warning" x-text="getCurrentStreak()"></div>
+              <div class="stat-desc" x-text="getCurrentStreak() === 1 ? 'day' : 'days'"></div>
+            </div>
+          </div>
+
+          <!-- Tag Performance Card -->
+          <div class="card bg-base-100 shadow">
+            <div class="card-body">
+              <h2 class="card-title text-base">
+                <ion-icon name="pricetags-outline"></ion-icon>
+                Tag Performance This Week
+              </h2>
+              <div class="space-y-3">
+                <template x-for="tag in tags" :key="tag.id">
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                      <span class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: tag.color }"></span>
+                        <span x-text="tag.name"></span>
+                      </span>
+                      <span class="opacity-70">
+                        <span x-text="getWeekPointsByTag()[tag.id] || 0"></span>
+                        / <span x-text="tag.defaultCapacity || 20"></span>
+                      </span>
+                    </div>
+                    <progress
+                      class="progress h-2"
+                      :class="{
+                        'progress-success': (getWeekPointsByTag()[tag.id] || 0) >= (tag.defaultCapacity || 20),
+                        'progress-primary': (getWeekPointsByTag()[tag.id] || 0) < (tag.defaultCapacity || 20)
+                      }"
+                      :value="getWeekPointsByTag()[tag.id] || 0"
+                      :max="tag.defaultCapacity || 20">
+                    </progress>
+                  </div>
+                </template>
+                <template x-if="tags.length === 0">
+                  <p class="text-sm opacity-50">No tags created yet</p>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weekly Activity Pattern -->
+          <div class="card bg-base-100 shadow">
+            <div class="card-body">
+              <h2 class="card-title text-base">
+                <ion-icon name="bar-chart-outline"></ion-icon>
+                Weekly Activity
+              </h2>
+              <div class="flex items-end justify-between gap-1 h-24">
+                <template x-for="day in getDailyActivityPattern()" :key="day.day">
+                  <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-full bg-base-200 rounded-t relative" style="min-height: 4px;"
+                         :style="{
+                           height: (day.count > 0 ? Math.max(20, Math.min(100, day.count * 20)) : 4) + '%',
+                           backgroundColor: day.isToday ? 'oklch(var(--p))' : (day.count > 0 ? 'oklch(var(--s))' : '')
+                         }">
+                    </div>
+                    <span class="text-xs opacity-70" :class="{ 'font-bold': day.isToday }" x-text="day.day"></span>
+                  </div>
+                </template>
+              </div>
+              <div class="text-xs text-center opacity-50 mt-2">Tasks completed per day</div>
+            </div>
+          </div>
+
+          <!-- Focus Quality Card -->
+          <div class="card bg-base-100 shadow">
+            <div class="card-body">
+              <h2 class="card-title text-base">
+                <ion-icon name="pulse-outline"></ion-icon>
+                Focus Quality
+              </h2>
+              <div class="flex items-center gap-6">
+                <div class="radial-progress text-success"
+                     :style="{ '--value': getFocusQualityStats().positivePercent, '--size': '5rem' }"
+                     role="progressbar">
+                  <span class="text-sm font-bold" x-text="getFocusQualityStats().positivePercent + '%'"></span>
+                </div>
+                <div class="flex-1 space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="flex items-center gap-2">
+                      <ion-icon name="happy-outline" class="text-success"></ion-icon>
+                      Good Focus
+                    </span>
+                    <span x-text="getFocusQualityStats().positive"></span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="flex items-center gap-2">
+                      <ion-icon name="remove-outline" class="text-warning"></ion-icon>
+                      Neutral
+                    </span>
+                    <span x-text="getFocusQualityStats().neutral"></span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="flex items-center gap-2">
+                      <ion-icon name="sad-outline" class="text-error"></ion-icon>
+                      Struggled
+                    </span>
+                    <span x-text="getFocusQualityStats().negative"></span>
+                  </div>
+                  <div class="divider my-1"></div>
+                  <div class="flex justify-between text-sm">
+                    <span>Avg Session</span>
+                    <span class="font-medium" x-text="formatDuration(getFocusQualityStats().avgDuration)"></span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span>Week Total</span>
+                    <span class="font-medium" x-text="formatDuration(getWeekFocusTime())"></span>
+                  </div>
+                </div>
+              </div>
+              <template x-if="getFocusQualityStats().total === 0">
+                <div class="text-center py-4 opacity-50">
+                  <ion-icon name="hourglass-outline" class="text-2xl mb-2"></ion-icon>
+                  <p class="text-sm">No focus sessions this week yet</p>
+                </div>
+              </template>
+            </div>
+          </div>
+
+        </div>
+        <!-- End Stats View -->
+
+      </div>
+      <!-- End Page Content -->
+
+    </div>
+    <!-- End drawer-content -->
+
+    <!-- Drawer Sidebar -->
+    <div class="drawer-side z-[60]">
+      <label for="main-drawer" class="drawer-overlay"></label>
+      <div class="menu bg-base-100 min-h-full w-72 p-4 pb-24">
+        <div class="mb-4">
+          <h2 class="font-bold text-lg mb-1">Menu</h2>
+          <p class="text-sm opacity-60">Settings & more</p>
+        </div>
+
+        <!-- Routines Section -->
+        <div class="mb-4">
+          <p class="text-xs font-medium opacity-50 uppercase mb-2">Active Routine</p>
+          <select x-model="manualRoutineId" class="select select-bordered select-sm w-full">
+            <option value="">Auto (based on time)</option>
+            <option value="__planning__">Planning (show all)</option>
+            <template x-for="routine in routines" :key="routine.id">
+              <option :value="routine.id" x-text="routine.icon + ' ' + routine.name"></option>
+            </template>
+          </select>
+          <template x-if="manualRoutineId === '__planning__'">
+            <div class="flex items-center gap-2 p-2 mt-2 rounded-lg bg-base-200">
+              <ion-icon name="clipboard-outline"></ion-icon>
+              <span class="font-medium text-sm">Planning Mode</span>
+              <span class="text-xs opacity-50 ml-auto">All tasks visible</span>
+            </div>
+          </template>
+          <template x-if="activeRoutine && manualRoutineId !== '__planning__'">
+            <div class="flex items-center gap-2 p-2 mt-2 rounded-lg" :style="{ backgroundColor: activeRoutine.color + '15' }">
+              <span x-text="activeRoutine.icon"></span>
+              <span class="font-medium text-sm" x-text="activeRoutine.name" :style="{ color: activeRoutine.color }"></span>
+              <span class="text-xs opacity-50 ml-auto" x-text="manualRoutineId ? 'Manual' : 'Auto'"></span>
+            </div>
+          </template>
+          <template x-if="!activeRoutine && !manualRoutineId">
+            <p class="text-sm opacity-50 mt-2">No routine active at this time</p>
+          </template>
+        </div>
+
+        <div class="divider my-2"></div>
+
+        <!-- Quick Links -->
+        <ul class="menu menu-sm">
+          <li><a @click="showTagsModal = true; document.getElementById('main-drawer').checked = false" class="gap-2"><ion-icon name="pricetags-outline"></ion-icon> Manage Tags</a></li>
+          <li><a @click="showRoutinesModal = true; document.getElementById('main-drawer').checked = false" class="gap-2"><ion-icon name="time-outline"></ion-icon> Manage Routines</a></li>
+          <li><a @click="showSettingsModal = true; document.getElementById('main-drawer').checked = false" class="gap-2"><ion-icon name="settings-outline"></ion-icon> Settings</a></li>
+        </ul>
+
+        <div class="divider my-2"></div>
+
+        <!-- Completed Summary -->
+        <div class="mb-4">
+          <p class="text-xs font-medium opacity-50 uppercase mb-2">Recently Completed</p>
+          <div class="space-y-1 max-h-32 overflow-y-auto">
+            <template x-for="task in completedTasks.slice(0, 5)" :key="task.id">
+              <div class="flex items-center gap-2 p-1 text-sm opacity-60">
+                <ion-icon name="checkmark-circle-outline" class="text-success"></ion-icon>
+                <span class="truncate flex-1 line-through" x-text="task.title"></span>
+              </div>
+            </template>
+            <template x-if="completedTasks.length === 0">
+              <p class="text-sm opacity-50">No completed tasks</p>
+            </template>
+          </div>
+        </div>
+
+        <!-- Sprint Health (compact) -->
+        <div class="pt-4">
+          <p class="text-xs font-medium opacity-50 uppercase mb-2">Sprint Health</p>
+          <template x-if="selectedSprint">
+            <div class="flex items-center gap-2">
+              <span class="badge"
+                    :class="{
+                      'badge-success': getSprintHealth(selectedSprint).overall === 'on_track',
+                      'badge-warning': getSprintHealth(selectedSprint).overall === 'at_risk',
+                      'badge-error': getSprintHealth(selectedSprint).overall === 'off_track'
+                    }"
+                    x-text="getSprintHealth(selectedSprint).overall.replace('_', ' ')"></span>
+              <span class="text-sm opacity-60" x-text="getDaysRemaining(selectedSprint) + ' days left'"></span>
+            </div>
+          </template>
+        </div>
+
+        <div class="divider my-2"></div>
+
+        <!-- Dev Tools -->
+        <div class="mt-auto">
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary class="collapse-title text-xs font-medium py-2 min-h-0">
+              <span class="flex items-center gap-2">
+                <ion-icon name="code-slash-outline"></ion-icon>
+                Dev Tools
+              </span>
+            </summary>
+            <div class="collapse-content px-2">
+              <div class="space-y-2 pt-2">
+                <button @click="showImportModal = true; document.getElementById('main-drawer').checked = false" class="btn btn-sm btn-block btn-ghost justify-start gap-2">
+                  <ion-icon name="document-text-outline"></ion-icon>
+                  Import Tasks from Text
+                </button>
+                <div class="divider my-1 text-xs opacity-50">Backup</div>
+                <button @click="exportData()" class="btn btn-sm btn-block btn-ghost justify-start gap-2">
+                  <ion-icon name="cloud-download-outline"></ion-icon>
+                  Export Backup
+                </button>
+                <label class="btn btn-sm btn-block btn-ghost justify-start gap-2 cursor-pointer">
+                  <ion-icon name="cloud-upload-outline"></ion-icon>
+                  Import Backup
+                  <input type="file" accept=".json" @change="importData($event)" class="hidden">
+                </label>
+                <div class="divider my-1 text-xs opacity-50">Data</div>
+                <button @click="loadDemoData(); document.getElementById('main-drawer').checked = false" class="btn btn-sm btn-block btn-ghost justify-start gap-2">
+                  <ion-icon name="download-outline"></ion-icon>
+                  Load Demo Data
+                </button>
+                <button @click="if(confirm('This will delete ALL your data. Are you sure?')) { resetAllData(); }" class="btn btn-sm btn-block btn-ghost justify-start gap-2 text-error">
+                  <ion-icon name="trash-outline"></ion-icon>
+                  Reset All Data
+                </button>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- End Drawer -->
+
+  <!-- Bottom Dock Navigation (daisyUI dock component) -->
+  <div class="dock dock-md bg-base-100 z-50">
+    <button @click="currentView = 'focus'" :class="{ 'dock-active': currentView === 'focus' }">
+      <ion-icon name="flash-outline" style="font-size: 1.2em;"></ion-icon>
+      <span class="dock-label">Focus</span>
+    </button>
+    <button @click="currentView = 'tasks'" :class="{ 'dock-active': currentView === 'tasks' }">
+      <ion-icon name="list-outline" style="font-size: 1.2em;"></ion-icon>
+      <span class="dock-label">Tasks</span>
+    </button>
+    <button @click="currentView = 'stats'" :class="{ 'dock-active': currentView === 'stats' }">
+      <ion-icon name="stats-chart-outline" style="font-size: 1.2em;"></ion-icon>
+      <span class="dock-label">Stats</span>
+    </button>
+  </div>
+
+  <!-- FAB (Floating Action Button) for adding tasks - positioned above dock -->
+  <button @click="showCreateTaskModal = true"
+          class="btn btn-primary btn-circle btn-lg shadow-lg fixed right-4 z-50"
+          style="bottom: 5rem;">
+    <ion-icon name="add-outline" style="font-size: 1.5em;"></ion-icon>
+  </button>
+  
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Create Task Modal -->
+  <dialog x-ref="createTaskModal" class="modal" :class="{'modal-open': showCreateTaskModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCreateTaskModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Create New Task</h3>
+      <form @submit.prevent="createTask()">
+        <div class="space-y-4">
+          <div class="form-control">
+            <label class="label"><span class="label-text">Title *</span></label>
+            <input type="text" x-model="newTask.title" required class="input input-bordered w-full" placeholder="What needs to be done?">
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Description</span></label>
+            <textarea x-model="newTask.description" rows="3" class="textarea textarea-bordered w-full" placeholder="Additional details"></textarea>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Points per Tag *</span></label>
+            <div class="space-y-2">
+              <template x-for="tag in tags" :key="tag.id">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-2 w-32" :style="{ color: tag.color }">
+                    <span x-text="tag.icon"></span>
+                    <span x-text="tag.name"></span>
+                  </div>
+                  <select x-model="newTask.tagPoints[tag.id]" class="select select-bordered select-sm">
+                    <option value="">-</option>
+                    <template x-for="pt in FIBONACCI_POINTS" :key="pt">
+                      <option :value="pt" x-text="pt + ' pt'"></option>
+                    </template>
+                  </select>
+                </div>
+              </template>
+            </div>
+            <label class="label"><span class="label-text-alt">Select at least one tag with points</span></label>
+          </div>
+          <!-- Recurrence preview -->
+          <template x-if="parseRecurrence(newTask.title).valid">
+            <div class="alert alert-info py-2">
+              <ion-icon name="repeat-outline"></ion-icon>
+              <span>Repeats <span x-text="parseRecurrence(newTask.title).description"></span></span>
+            </div>
+          </template>
+        </div>
+        <div class="modal-action">
+          <button type="button" @click="showCreateTaskModal = false" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary" x-text="parseRecurrence(newTask.title).valid ? 'Create Recurring Task' : 'Create Task'"></button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showCreateTaskModal = false"><button>close</button></form>
+  </dialog>
+
+  <!-- Task Detail Modal -->
+  <dialog x-ref="taskDetailModal" class="modal" :class="{'modal-open': showTaskDetailModal}">
+    <div class="modal-box max-w-2xl">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showTaskDetailModal = false; saveTaskDetail()">✕</button>
+      </form>
+      <template x-if="selectedTask">
+        <div>
+          <div class="flex items-start gap-2 mb-4">
+            <ion-icon x-show="selectedTask.status === 'completed'" name="checkmark-circle-outline" class="text-success text-xl mt-1"></ion-icon>
+            <ion-icon x-show="selectedTask.status === 'canceled'" name="close-circle-outline" class="text-error text-xl mt-1"></ion-icon>
+            <ion-icon x-show="selectedTask.recurrence" name="repeat-outline" class="text-secondary text-xl mt-1"></ion-icon>
+            <div class="flex-1">
+              <input type="text" x-model="selectedTask.title" @change="saveTaskDetail()"
+                     class="input input-ghost text-xl font-bold w-full p-0 h-auto focus:bg-base-200"
+                     :disabled="selectedTask.status !== 'active'">
+              <div class="flex items-center gap-2 text-sm opacity-60 mt-1">
+                <span x-text="'Created ' + formatDate(new Date(selectedTask.createdAt))"></span>
+                <span>•</span>
+                <span x-text="getTaskAge(selectedTask) + ' days old'"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-control mb-6">
+            <label class="label"><span class="label-text">Description</span></label>
+            <textarea x-model="selectedTask.description" @change="saveTaskDetail()" rows="3"
+                      class="textarea textarea-bordered w-full" placeholder="Add description..."
+                      :disabled="selectedTask.status !== 'active'"></textarea>
+          </div>
+
+          <!-- Tags & Points -->
+          <div class="mb-6">
+            <label class="label"><span class="label-text">Tags & Points</span></label>
+            <div class="flex flex-wrap gap-2 items-center">
+              <template x-for="(points, tagId) in selectedTask.tagPoints" :key="tagId">
+                <div class="badge badge-lg gap-1 pr-1" :style="{ backgroundColor: getTagById(tagId)?.color + '20', color: getTagById(tagId)?.color, borderColor: getTagById(tagId)?.color }">
+                  <span x-text="getTagById(tagId)?.icon"></span>
+                  <span x-text="getTagById(tagId)?.name"></span>
+                  <select x-model="selectedTask.tagPoints[tagId]" @change="saveTaskDetail()"
+                          class="bg-transparent border-none text-sm font-bold w-14"
+                          :disabled="selectedTask.status !== 'active'">
+                    <template x-for="pt in FIBONACCI_POINTS" :key="pt">
+                      <option :value="pt" x-text="pt + 'pt'"></option>
+                    </template>
+                  </select>
+                  <button x-show="selectedTask.status === 'active'"
+                          @click="removeTagFromTask(tagId)"
+                          class="btn btn-ghost btn-xs btn-circle h-5 w-5 min-h-0 opacity-60 hover:opacity-100 hover:bg-error/20">
+                    <ion-icon name="close-outline" class="text-sm"></ion-icon>
+                  </button>
+                </div>
+              </template>
+              <!-- Add Tag Dropdown -->
+              <template x-if="selectedTask.status === 'active' && getUnassignedTags().length > 0">
+                <div class="dropdown dropdown-end">
+                  <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-1">
+                    <ion-icon name="add-outline"></ion-icon>
+                    Add Tag
+                  </div>
+                  <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-52 p-2 shadow-lg border border-base-300">
+                    <template x-for="tag in getUnassignedTags()" :key="tag.id">
+                      <li>
+                        <a @click="addTagToTask(tag.id); $el.closest('.dropdown').querySelector('[tabindex]').blur()" class="flex items-center gap-2">
+                          <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: tag.color }"></span>
+                          <span x-text="tag.icon"></span>
+                          <span x-text="tag.name"></span>
+                        </a>
+                      </li>
+                    </template>
+                  </ul>
+                </div>
+              </template>
+            </div>
+          </div>
+          
+          <!-- Recurrence Info -->
+          <template x-if="selectedTask.recurrence">
+            <div class="mb-6 p-4 bg-secondary/10 rounded-lg">
+              <label class="block text-sm font-medium text-secondary mb-1 flex items-center gap-1"><ion-icon name="repeat-outline"></ion-icon> Recurrence Pattern</label>
+              <p class="text-secondary" x-text="describeRRule(selectedTask.recurrence)"></p>
+              <p class="text-xs opacity-70 mt-1">Next: <span x-text="formatDate(getNextOccurrence(selectedTask))"></span></p>
+            </div>
+          </template>
+          
+          <!-- Sessions -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+              <label class="label-text font-medium">Focus Sessions</label>
+              <div class="flex gap-1">
+                <button @click="openAddManualSessionModal(selectedTask)"
+                        :disabled="selectedTask.status !== 'active'"
+                        class="btn btn-ghost btn-xs">+ Add Manual</button>
+                <button @click="startSession(selectedTask); showTaskDetailModal = false"
+                        :disabled="activeSession || selectedTask.status !== 'active'"
+                        class="btn btn-ghost btn-xs text-primary">+ Start Session</button>
+              </div>
+            </div>
+            <div class="space-y-2 max-h-40 overflow-y-auto">
+              <template x-for="session in (selectedTask.sessions || []).slice().reverse()" :key="session.id">
+                <div class="bg-base-200 rounded-lg p-3 text-sm">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <ion-icon :class="{'text-success': session.status === 'completed', 'text-error': session.status === 'abandoned', 'text-info': session.status === 'in_progress'}"
+                            :name="session.status === 'completed' ? 'checkmark-outline' : session.status === 'abandoned' ? 'close-outline' : 'play-outline'"></ion-icon>
+                      <span x-text="formatDate(new Date(session.startedAt))"></span>
+                      <template x-if="session.endedAt">
+                        <span class="opacity-60" x-text="'(' + formatSessionTime(Math.floor((new Date(session.endedAt) - new Date(session.startedAt)) / 1000)) + ')'"></span>
+                      </template>
+                    </div>
+                    <template x-if="session.focusLevel">
+                      <span class="badge badge-sm"
+                            :class="{'badge-success': session.focusLevel === 'focused', 'badge-warning': session.focusLevel === 'neutral', 'badge-error': session.focusLevel === 'distracted'}"
+                            x-text="session.focusLevel"></span>
+                    </template>
+                  </div>
+                </div>
+              </template>
+              <template x-if="!selectedTask.sessions?.length">
+                <p class="text-sm opacity-50 italic">No sessions yet</p>
+              </template>
+            </div>
+          </div>
+          
+          <!-- Comments -->
+          <div class="mb-6">
+            <label class="label-text font-medium mb-2 block">Comments</label>
+            <div class="space-y-2 mb-3 max-h-48 overflow-y-auto">
+              <template x-for="comment in (selectedTask.comments || [])" :key="comment.id">
+                <div class="bg-base-200 rounded-lg p-3" :class="{
+                  'border-l-4 border-l-warning': comment.skipJustification,
+                  'border-l-4 border-l-error': comment.cancelJustification
+                }">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <template x-if="comment.skipJustification">
+                        <span class="badge badge-warning badge-sm mb-1">Skip Justification</span>
+                      </template>
+                      <template x-if="comment.cancelJustification">
+                        <span class="badge badge-error badge-sm mb-1">Cancellation Reason</span>
+                      </template>
+                      <p class="text-sm whitespace-pre-wrap" x-text="comment.content"></p>
+                      <p class="text-xs opacity-50 mt-1" x-text="formatDate(new Date(comment.createdAt))"></p>
+                    </div>
+                    <button @click="deleteComment(selectedTask, comment)" class="btn btn-ghost btn-xs text-error"><ion-icon name="trash-outline"></ion-icon></button>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" x-model="newCommentContent" @keyup.enter="addComment(selectedTask)"
+                     class="input input-bordered input-sm flex-1" placeholder="Add a comment...">
+              <button @click="addComment(selectedTask)" class="btn btn-ghost btn-sm">Add</button>
+            </div>
+          </div>
+          
+          <!-- Location & Parent -->
+          <div class="text-sm opacity-70">
+            <p class="flex items-center gap-1">Location: <span class="font-medium flex items-center gap-1"><ion-icon :name="selectedTask.location.type === 'backlog' ? 'clipboard-outline' : 'calendar-outline'"></ion-icon> <span x-text="selectedTask.location.type === 'backlog' ? 'Backlog' : 'Sprint'"></span></span></p>
+            <template x-if="selectedTask.parentId">
+              <p class="mt-1 flex items-center gap-1">
+                <ion-icon name="repeat-outline"></ion-icon> Instance of:
+                <span class="font-medium" x-text="getTaskById(selectedTask.parentId)?.title"></span>
+              </p>
+            </template>
+          </div>
+
+          <!-- Danger Zone -->
+          <template x-if="selectedTask.status === 'active'">
+            <div class="mt-6 pt-4 border-t border-base-300">
+              <button @click="openCancelTaskModal(selectedTask)" class="btn btn-ghost btn-sm text-error gap-1">
+                <ion-icon name="close-circle-outline"></ion-icon>
+                Cancel Task
+              </button>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showTaskDetailModal = false; saveTaskDetail()"><button>close</button></form>
+  </dialog>
+  
+  <!-- Skip For Day Modal -->
+  <dialog class="modal" :class="{'modal-open': showSkipForDayModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showSkipForDayModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-2">Skip for Day</h3>
+      <p class="opacity-70 mb-4">This task will be hidden until tomorrow. Please provide a justification.</p>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Justification *</span></label>
+        <textarea x-model="skipJustification" required rows="3" class="textarea textarea-bordered" placeholder="Why are you skipping this task?"></textarea>
+      </div>
+      <div class="modal-action">
+        <button @click="showSkipForDayModal = false" class="btn btn-ghost">Cancel</button>
+        <button @click="confirmSkipForDay()" :disabled="!skipJustification.trim()" class="btn btn-warning">Skip Task</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showSkipForDayModal = false"><button>close</button></form>
+  </dialog>
+
+  <!-- Cancel Task Modal -->
+  <dialog class="modal" :class="{'modal-open': showCancelTaskModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCancelTaskModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-2 text-error flex items-center gap-2">
+        <ion-icon name="close-circle-outline"></ion-icon>
+        Cancel Task
+      </h3>
+      <p class="opacity-70 mb-4">This action is permanent. The task will be marked as canceled and cannot be undone.</p>
+      <template x-if="taskToCancel">
+        <div class="bg-base-200 rounded-lg p-3 mb-4">
+          <p class="font-medium" x-text="taskToCancel.title"></p>
+        </div>
+      </template>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Why are you canceling this task?</span></label>
+        <textarea x-model="cancelJustification" required rows="3" class="textarea textarea-bordered" placeholder="e.g., No longer relevant, duplicate task, requirements changed..."></textarea>
+      </div>
+      <div class="modal-action">
+        <button @click="showCancelTaskModal = false" class="btn btn-ghost">Back</button>
+        <button @click="confirmCancelTask()" :disabled="!cancelJustification.trim()" class="btn btn-error">Cancel Task</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showCancelTaskModal = false"><button>close</button></form>
+  </dialog>
+
+  <!-- Complete Session Modal -->
+  <dialog class="modal" :class="{'modal-open': showCompleteSessionModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCompleteSessionModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Complete Session</h3>
+      <div class="mb-4">
+        <label class="label"><span class="label-text">How focused were you?</span></label>
+        <div class="flex gap-2">
+          <button type="button" @click="sessionFocusLevel = 'distracted'"
+                  class="btn btn-sm flex-1" :class="sessionFocusLevel === 'distracted' ? 'btn-error' : 'btn-ghost bg-error/10 text-error'">
+            <ion-icon name="sad-outline"></ion-icon> Distracted
+          </button>
+          <button type="button" @click="sessionFocusLevel = 'neutral'"
+                  class="btn btn-sm flex-1" :class="sessionFocusLevel === 'neutral' ? 'btn-warning' : 'btn-ghost bg-warning/10 text-warning'">
+            <ion-icon name="ellipse-outline"></ion-icon> Neutral
+          </button>
+          <button type="button" @click="sessionFocusLevel = 'focused'"
+                  class="btn btn-sm flex-1" :class="sessionFocusLevel === 'focused' ? 'btn-success' : 'btn-ghost bg-success/10 text-success'">
+            <ion-icon name="radio-button-on-outline"></ion-icon> Focused
+          </button>
+        </div>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Session Note (optional)</span></label>
+        <textarea x-model="sessionNote" rows="2" class="textarea textarea-bordered" placeholder="What did you accomplish?"></textarea>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label cursor-pointer justify-start gap-2">
+          <input type="checkbox" x-model="markTaskComplete" class="checkbox checkbox-sm">
+          <span class="label-text">Also mark task as complete</span>
+        </label>
+      </div>
+      <div class="modal-action">
+        <button @click="showCompleteSessionModal = false" class="btn btn-ghost">Cancel</button>
+        <button @click="confirmCompleteSession()" class="btn btn-success">Complete Session</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showCompleteSessionModal = false"><button>close</button></form>
+  </dialog>
+
+  <!-- Add Manual Session Modal -->
+  <dialog class="modal" :class="{'modal-open': showAddManualSessionModal}">
+    <div class="modal-box">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showAddManualSessionModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+        <ion-icon name="time-outline"></ion-icon>
+        Add Manual Session
+      </h3>
+      <template x-if="manualSessionTask">
+        <div class="bg-base-200 rounded-lg p-3 mb-4">
+          <p class="font-medium" x-text="manualSessionTask.title"></p>
+        </div>
+      </template>
+      <div class="space-y-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Duration (minutes)</span></label>
+          <input type="number" x-model.number="manualSessionDuration" min="1" max="480" class="input input-bordered" placeholder="25">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Date</span></label>
+          <input type="date" x-model="manualSessionDate" class="input input-bordered">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">How focused were you?</span></label>
+          <div class="flex gap-2">
+            <button type="button" @click="manualSessionFocusLevel = 'distracted'"
+                    class="btn btn-sm flex-1" :class="manualSessionFocusLevel === 'distracted' ? 'btn-error' : 'btn-ghost bg-error/10 text-error'">
+              <ion-icon name="sad-outline"></ion-icon> Distracted
+            </button>
+            <button type="button" @click="manualSessionFocusLevel = 'neutral'"
+                    class="btn btn-sm flex-1" :class="manualSessionFocusLevel === 'neutral' ? 'btn-warning' : 'btn-ghost bg-warning/10 text-warning'">
+              <ion-icon name="ellipse-outline"></ion-icon> Neutral
+            </button>
+            <button type="button" @click="manualSessionFocusLevel = 'focused'"
+                    class="btn btn-sm flex-1" :class="manualSessionFocusLevel === 'focused' ? 'btn-success' : 'btn-ghost bg-success/10 text-success'">
+              <ion-icon name="happy-outline"></ion-icon> Focused
+            </button>
+          </div>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Note (optional)</span></label>
+          <textarea x-model="manualSessionNote" rows="2" class="textarea textarea-bordered" placeholder="What did you work on?"></textarea>
+        </div>
+      </div>
+      <div class="modal-action">
+        <button @click="showAddManualSessionModal = false" class="btn btn-ghost">Cancel</button>
+        <button @click="addManualSession()" :disabled="!manualSessionDuration || manualSessionDuration < 1" class="btn btn-primary">Add Session</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showAddManualSessionModal = false"><button>close</button></form>
+  </dialog>
+
+  <!-- Sprint Health Modal -->
+  <dialog class="modal" :class="{'modal-open': showSprintHealthModal}">
+    <div class="modal-box max-w-lg">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showSprintHealthModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Sprint Health Details</h3>
+      <template x-if="selectedSprint">
+        <div class="space-y-4">
+          <template x-for="tag in tags" :key="tag.id">
+            <div class="p-4 rounded-lg"
+                 :class="{'bg-success/10': getTagHealth(selectedSprint, tag.id) === 'on_track', 'bg-warning/10': getTagHealth(selectedSprint, tag.id) === 'at_risk', 'bg-error/10': getTagHealth(selectedSprint, tag.id) === 'off_track'}">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span x-text="tag.icon"></span>
+                  <span class="font-medium" x-text="tag.name"></span>
+                </div>
+                <span class="badge"
+                      :class="{'badge-success': getTagHealth(selectedSprint, tag.id) === 'on_track', 'badge-warning': getTagHealth(selectedSprint, tag.id) === 'at_risk', 'badge-error': getTagHealth(selectedSprint, tag.id) === 'off_track'}"
+                      x-text="getTagHealth(selectedSprint, tag.id).replace('_', ' ')"></span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <div><span class="opacity-60">Assigned:</span> <span class="font-medium" x-text="getSprintPointsForTag(selectedSprint, tag.id) + ' pts'"></span></div>
+                <div><span class="opacity-60">Capacity:</span> <span class="font-medium" x-text="getCapacityForTag(selectedSprint, tag.id) + ' pts'"></span></div>
+                <div><span class="opacity-60">Burn rate:</span> <span class="font-medium" x-text="getBurnRateNeeded(selectedSprint, tag.id).toFixed(1) + ' pts/day'"></span></div>
+                <div><span class="opacity-60">Sustainable:</span> <span class="font-medium" x-text="(getCapacityForTag(selectedSprint, tag.id) / 7).toFixed(1) + ' pts/day'"></span></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+      <div class="modal-action">
+        <button @click="showSprintHealthModal = false" class="btn btn-ghost">Close</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showSprintHealthModal = false"><button>close</button></form>
+  </dialog>
+  
+  <!-- Capacity Edit Modal -->
+  <dialog class="modal" :class="{'modal-open': showCapacityEditModal}">
+    <div class="modal-box max-w-sm">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showCapacityEditModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Edit Capacity</h3>
+      <template x-if="capacityEditTag">
+        <div>
+          <div class="flex items-center gap-2 mb-4" :style="{ color: capacityEditTag.color }">
+            <span x-text="capacityEditTag.icon" class="text-2xl"></span>
+            <span class="font-medium" x-text="capacityEditTag.name"></span>
+          </div>
+          <div class="form-control mb-4">
+            <label class="label"><span class="label-text">Capacity for this sprint</span></label>
+            <input type="number" x-model.number="capacityEditValue" min="1" class="input input-bordered">
+            <label class="label"><span class="label-text-alt">Default: <span x-text="capacityEditTag.defaultCapacity"></span> points</span></label>
+          </div>
+          <div class="modal-action">
+            <button @click="showCapacityEditModal = false" class="btn btn-ghost">Cancel</button>
+            <button @click="saveCapacityOverride()" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </template>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showCapacityEditModal = false"><button>close</button></form>
+  </dialog>
+  
+  <!-- Tags Management Modal -->
+  <dialog class="modal" :class="{'modal-open': showTagsModal}">
+    <div class="modal-box max-w-lg max-h-[90vh]">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showTagsModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Manage Tags</h3>
+      <div class="space-y-3 mb-6">
+        <template x-for="tag in tags" :key="tag.id">
+          <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
+            <input type="text" x-model="tag.icon" @change="updateTag(tag)" class="input input-ghost w-12 text-center text-xl p-0">
+            <div class="flex-1">
+              <input type="text" x-model="tag.name" @change="updateTag(tag)" class="input input-ghost font-medium p-0 h-auto w-full" :style="{ color: tag.color }">
+              <div class="flex items-center gap-2 mt-1">
+                <input type="color" x-model="tag.color" @change="updateTag(tag)" class="w-6 h-6 rounded cursor-pointer">
+                <span class="text-xs opacity-60">Cap:</span>
+                <input type="number" x-model.number="tag.defaultCapacity" @change="updateTag(tag)" class="input input-bordered input-xs w-16" min="1">
+              </div>
+            </div>
+            <button @click="deleteTag(tag)" :disabled="tag.id === 'untagged'" class="btn btn-ghost btn-sm text-error disabled:opacity-30"><ion-icon name="trash-outline"></ion-icon></button>
+          </div>
+        </template>
+      </div>
+      <div class="divider"></div>
+      <h4 class="font-medium mb-3">Add New Tag</h4>
+      <div class="flex items-center gap-2 flex-wrap">
+        <input type="text" x-model="newTagIcon" class="input input-bordered w-12 text-center" placeholder="📌">
+        <input type="text" x-model="newTagName" class="input input-bordered flex-1 min-w-32" placeholder="Tag name">
+        <input type="color" x-model="newTagColor" class="w-10 h-10 rounded cursor-pointer">
+        <input type="number" x-model.number="newTagCapacity" class="input input-bordered w-16" placeholder="Cap" min="1">
+        <button @click="addTag()" :disabled="!newTagName.trim()" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showTagsModal = false"><button>close</button></form>
+  </dialog>
+  
+  <!-- Routines Management Modal -->
+  <dialog class="modal" :class="{'modal-open': showRoutinesModal}">
+    <div class="modal-box max-w-2xl max-h-[90vh]">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showRoutinesModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-2">Manage Routines</h3>
+      <p class="text-sm opacity-70 mb-4">Routines auto-filter tasks based on time. Higher priority wins when multiple match.</p>
+      <div class="space-y-3 mb-6">
+        <template x-for="routine in routines" :key="routine.id">
+          <div class="p-4 bg-base-200 rounded-lg">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <input type="text" x-model="routine.icon" @change="updateRoutine(routine)" class="input input-ghost w-10 text-center p-0">
+                  <input type="text" x-model="routine.name" @change="updateRoutine(routine)" class="input input-ghost font-medium p-0 h-auto" :style="{ color: routine.color }">
+                  <span class="text-xs opacity-60">Priority:</span>
+                  <input type="number" x-model.number="routine.priority" @change="updateRoutine(routine)" class="input input-bordered input-xs w-14" min="1" max="10">
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                  <div class="form-control">
+                    <label class="label py-0"><span class="label-text-alt">Task Filter</span></label>
+                    <input type="text" x-model="routine.taskFilterExpression" @change="updateRoutine(routine)" class="input input-bordered input-sm" placeholder="hasTag('work')">
+                  </div>
+                  <div class="form-control">
+                    <label class="label py-0"><span class="label-text-alt">Activation</span></label>
+                    <input type="text" x-model="routine.activationExpression" @change="updateRoutine(routine)" class="input input-bordered input-sm" placeholder="isWeekday">
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1">
+                <input type="color" x-model="routine.color" @change="updateRoutine(routine)" class="w-8 h-8 rounded cursor-pointer">
+                <button @click="deleteRoutine(routine)" class="btn btn-ghost btn-sm text-error"><ion-icon name="trash-outline"></ion-icon></button>
+              </div>
+            </div>
+          </div>
+        </template>
+        <template x-if="routines.length === 0">
+          <p class="text-center opacity-50 py-4">No routines yet</p>
+        </template>
+      </div>
+      <div class="divider"></div>
+      <h4 class="font-medium mb-3">Add New Routine</h4>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="flex items-center gap-2">
+          <input type="text" x-model="newRoutineIcon" class="input input-bordered w-12 text-center" placeholder="🏠">
+          <input type="text" x-model="newRoutineName" class="input input-bordered flex-1" placeholder="Routine name">
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="color" x-model="newRoutineColor" class="w-10 h-10 rounded cursor-pointer">
+          <input type="number" x-model.number="newRoutinePriority" class="input input-bordered w-16" placeholder="Pri" min="1" max="10">
+        </div>
+        <input type="text" x-model="newRoutineFilter" class="input input-bordered" placeholder="Task filter (e.g., hasTag('work'))">
+        <input type="text" x-model="newRoutineActivation" class="input input-bordered" placeholder="Activation (e.g., isWeekday)">
+      </div>
+      <div class="flex justify-end mb-4">
+        <button @click="addRoutine()" :disabled="!newRoutineName.trim()" class="btn btn-primary">Add Routine</button>
+      </div>
+      <div class="alert alert-info">
+        <div>
+          <p class="font-medium mb-1">Expression Examples:</p>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div>hasTag("Work")</div>
+            <div>isWeekday and hour >= 9</div>
+            <div>age > 7</div>
+            <div>dayOfWeek == "mon"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showRoutinesModal = false"><button>close</button></form>
+  </dialog>
+  
+  <!-- Settings Modal -->
+  <dialog class="modal" :class="{'modal-open': showSettingsModal}">
+    <div class="modal-box max-w-md">
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showSettingsModal = false">✕</button>
+      </form>
+      <h3 class="text-lg font-bold mb-4">Settings</h3>
+      <div class="space-y-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Default Session Duration</span></label>
+          <select x-model.number="settings.defaultSessionDuration" class="select select-bordered w-full">
+            <option value="15">15 minutes</option>
+            <option value="25">25 minutes (Pomodoro)</option>
+            <option value="45">45 minutes</option>
+            <option value="60">60 minutes</option>
+          </select>
+        </div>
+        <div class="divider"></div>
+        <div>
+          <h4 class="font-medium text-error mb-2">Danger Zone</h4>
+          <button @click="resetAllData()" class="btn btn-error btn-outline w-full gap-2"><ion-icon name="trash-outline"></ion-icon> Reset All Data</button>
+        </div>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showSettingsModal = false"><button>close</button></form>
+  </dialog>
+
+  <!-- Import Tasks Modal -->
+  <dialog class="modal" :class="{'modal-open': showImportModal}">
+    <div class="modal-box max-w-lg">
+      <h3 class="font-bold text-lg mb-4">Import Tasks</h3>
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" @click="showImportModal = false">✕</button>
+
+      <p class="text-sm opacity-70 mb-3">Paste your tasks below. Supported formats:</p>
+      <ul class="text-xs opacity-60 mb-3 list-disc list-inside">
+        <li><code>- [ ] Task name</code> - Markdown checkbox</li>
+        <li><code>- Task name</code> - List item</li>
+        <li><code>Task name</code> - Plain text</li>
+        <li><code>#tagname</code> - Assign to tag</li>
+        <li><code>every day/week/month</code> - Make recurring</li>
+      </ul>
+
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text text-sm">Default tag (when no #tag specified)</span>
+        </label>
+        <select x-model="importDefaultTagId" class="select select-bordered select-sm">
+          <option value="">No default tag</option>
+          <template x-for="tag in tags" :key="tag.id">
+            <option :value="tag.id" x-text="tag.name"></option>
+          </template>
+        </select>
+      </div>
+
+      <textarea x-model="importText"
+                class="textarea textarea-bordered w-full h-40 font-mono text-sm"
+                placeholder="- [ ] Review report #work
+- [ ] Morning workout #health every day
+Buy groceries"></textarea>
+
+      <template x-if="importText.trim()">
+        <div class="mt-3 p-3 bg-base-200 rounded-lg">
+          <p class="text-xs font-medium opacity-60 mb-2">Preview: <span x-text="parseImportText(importText).length"></span> tasks</p>
+          <div class="max-h-32 overflow-y-auto space-y-1">
+            <template x-for="(task, index) in parseImportText(importText).slice(0, 10)" :key="index">
+              <div class="text-sm flex items-center gap-2">
+                <span class="opacity-50" x-text="(index + 1) + '.'"></span>
+                <span x-text="task.title"></span>
+                <template x-for="tag in task.tags" :key="tag.id">
+                  <span class="badge badge-xs" :style="{ backgroundColor: tag.color + '20', color: tag.color }" x-text="tag.name"></span>
+                </template>
+                <template x-if="task.tags.length === 0 && importDefaultTagId">
+                  <span class="badge badge-xs" :style="{ backgroundColor: getTagById(importDefaultTagId)?.color + '20', color: getTagById(importDefaultTagId)?.color }" x-text="getTagById(importDefaultTagId)?.name"></span>
+                </template>
+                <span x-show="task.recurrence" class="badge badge-xs badge-secondary">recurring</span>
+              </div>
+            </template>
+            <template x-if="parseImportText(importText).length > 10">
+              <p class="text-xs opacity-50">...and <span x-text="parseImportText(importText).length - 10"></span> more</p>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <div class="modal-action">
+        <button @click="showImportModal = false" class="btn btn-ghost">Cancel</button>
+        <button @click="importTasks(); showImportModal = false"
+                :disabled="!importText.trim()"
+                class="btn btn-primary gap-2">
+          <ion-icon name="download-outline"></ion-icon>
+          Import <span x-text="parseImportText(importText).length"></span> Tasks
+        </button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop" @click="showImportModal = false"><button>close</button></form>
+  </dialog>
+
+  <script>
+    function checkMate() {
+      return {
+        // === CONSTANTS ===
+        FIBONACCI_POINTS: [1, 2, 3, 5, 8, 13, 21],
+        DAYS: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
+        
+        // === STATE (persisted) ===
+        tasks: Alpine.$persist([]).as('checkmate_tasks'),
+        tags: Alpine.$persist([]).as('checkmate_tags'),
+        sprints: Alpine.$persist([]).as('checkmate_sprints'),
+        routines: Alpine.$persist([]).as('checkmate_routines'),
+        settings: Alpine.$persist({ defaultSessionDuration: 25, theme: 'light' }).as('checkmate_settings'),
+        
+        // === UI STATE ===
+        currentView: Alpine.$persist('focus').as('checkmate_currentView'),
+        manualRoutineId: Alpine.$persist('').as('checkmate_manualRoutineId'),
+        selectedSprintIndex: 0,
+        selectedTagFilters: [],
+        today: new Date(),
+        
+        // === MODAL STATE ===
+        showCreateTaskModal: false,
+        showTaskDetailModal: false,
+        showSkipForDayModal: false,
+        showCancelTaskModal: false,
+        showCompleteSessionModal: false,
+        showAddManualSessionModal: false,
+        showSprintHealthModal: false,
+        showCapacityEditModal: false,
+        showTagsModal: false,
+        showRoutinesModal: false,
+        showSettingsModal: false,
+        showImportModal: false,
+
+        // === FORM STATE ===
+        importText: '',
+        importDefaultTagId: '',
+        newTask: { title: '', description: '', tagPoints: {} },
+        selectedTask: null,
+        newCommentContent: '',
+        skipJustification: '',
+        taskToSkip: null,
+        cancelJustification: '',
+        taskToCancel: null,
+        manualSessionTask: null,
+        manualSessionDuration: 25,
+        manualSessionDate: '',
+        manualSessionFocusLevel: 'neutral',
+        manualSessionNote: '',
+        sessionFocusLevel: 'neutral',
+        sessionNote: '',
+        markTaskComplete: false,
+        capacityEditSprint: null,
+        capacityEditTag: null,
+        capacityEditValue: 0,
+        newTagName: '',
+        newTagIcon: '📌',
+        newTagColor: '#6366f1',
+        newTagCapacity: 20,
+        newRoutineName: '',
+        newRoutineIcon: '🏠',
+        newRoutineColor: '#6366f1',
+        newRoutinePriority: 5,
+        newRoutineFilter: '',
+        newRoutineActivation: '',
+        
+        // === SESSION TRACKING ===
+        activeSession: null,
+        sessionElapsed: 0,
+        sessionInterval: null,
+        
+        // === COMPUTED PROPERTIES ===
+        get selectedSprint() {
+          return this.sprints[this.selectedSprintIndex];
+        },
+        
+        get backlogTasks() {
+          let tasks = this.tasks.filter(t => t.location.type === 'backlog' && t.status === 'active' && !t.recurrence);
+          // Apply routine filter if active
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          return tasks;
+        },
+        
+        get filteredBacklogTasks() {
+          let tasks = this.backlogTasks;
+          if (this.selectedTagFilters.length > 0) {
+            tasks = tasks.filter(t => Object.keys(t.tagPoints).some(tagId => this.selectedTagFilters.includes(tagId)));
+          }
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          return tasks;
+        },
+        
+        get recurringTemplates() {
+          return this.tasks.filter(t => t.recurrence && t.status === 'active');
+        },
+        
+        get completedTasks() {
+          return this.tasks.filter(t => t.status === 'completed' || t.status === 'canceled');
+        },
+        
+        get activeRoutine() {
+          // Planning mode - return null to show all tasks
+          if (this.manualRoutineId === '__planning__') {
+            return null;
+          }
+          if (this.manualRoutineId) {
+            return this.routines.find(r => r.id === this.manualRoutineId);
+          }
+          const matching = this.routines.filter(r => this.evaluateActivationExpression(r.activationExpression));
+          if (matching.length === 0) return null;
+          matching.sort((a, b) => {
+            if (b.priority !== a.priority) return b.priority - a.priority;
+            return a.name.localeCompare(b.name);
+          });
+          return matching[0];
+        },
+
+        // Tasks in current sprint (today's focus)
+        get todayTasks() {
+          const sprint = this.sprints[0]; // Current sprint
+          if (!sprint) return [];
+          let tasks = this.tasks.filter(t =>
+            t.location.type === 'sprint' &&
+            t.location.sprintId === sprint.id &&
+            t.status === 'active' &&
+            !t.recurrence
+          );
+          // Apply routine filter if active
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          return tasks.sort((a, b) => {
+            // Returned tasks bubble to top
+            if (a.skipState?.type === 'for_day' && a.skipState?.returned) return -1;
+            if (b.skipState?.type === 'for_day' && b.skipState?.returned) return 1;
+            // Skipped tasks go to bottom
+            if (a.skipState && !b.skipState) return 1;
+            if (b.skipState && !a.skipState) return -1;
+            return (a.order || 0) - (b.order || 0);
+          });
+        },
+
+        // Tasks in next sprint (this week) - kept for compatibility
+        get thisWeekTasks() {
+          const sprint = this.sprints[1]; // Next sprint
+          if (!sprint) return [];
+          return this.tasks.filter(t =>
+            t.location.type === 'sprint' &&
+            t.location.sprintId === sprint.id &&
+            t.status === 'active' &&
+            !t.recurrence
+          );
+        },
+
+        // Get tasks for a specific sprint by index (for Kanban)
+        getKanbanSprintTasks(sprintIndex) {
+          const sprint = this.sprints[sprintIndex];
+          if (!sprint) return [];
+          let tasks = this.tasks.filter(t =>
+            t.location.type === 'sprint' &&
+            t.location.sprintId === sprint.id &&
+            t.status === 'active' &&
+            !t.recurrence
+          );
+          // Apply routine filter if active
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          return tasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+        },
+
+        // The #1 priority task to focus on
+        get focusTask() {
+          const tasks = this.todayTasks.filter(t => !t.skipState || (t.skipState?.type === 'for_day' && t.skipState?.returned));
+          return tasks[0] || null;
+        },
+
+        // Tasks after the focus task
+        get upNextTasks() {
+          const tasks = this.todayTasks.filter(t => !t.skipState || (t.skipState?.type === 'for_day' && t.skipState?.returned));
+          return tasks.slice(1);
+        },
+
+        // === LIFECYCLE ===
+        init() {
+          this.initializeDefaults();
+          this.initializeSprints();
+          setInterval(() => {
+            this.today = new Date();
+            this.checkSkipReturns();
+          }, 60000);
+          this.checkSkipReturns();
+          console.log('Check Mate initialized');
+        },
+
+        // Initialize Kanban drag-and-drop with SortableJS
+        kanbanInstances: [],
+        initKanban() {
+          // Destroy existing instances
+          this.kanbanInstances.forEach(instance => instance.destroy());
+          this.kanbanInstances = [];
+
+          const self = this;
+          const columnIds = ['kanban-backlog', 'kanban-sprint-0', 'kanban-sprint-1'];
+
+          columnIds.forEach(columnId => {
+            const el = document.getElementById(columnId);
+            if (!el) return;
+
+            const sortable = new Sortable(el, {
+              group: 'kanban-tasks',
+              animation: 150,
+              ghostClass: 'sortable-ghost',
+              chosenClass: 'sortable-chosen',
+              dragClass: 'sortable-drag',
+              handle: '.kanban-task', // Entire card is draggable
+              draggable: '.kanban-task',
+              // Disable fallback mode which causes clone issues
+              forceFallback: false,
+
+              onEnd: function(evt) {
+                const taskId = evt.item.dataset.id;
+                if (!taskId) {
+                  console.warn('No task ID found on dragged item');
+                  return;
+                }
+
+                const task = self.tasks.find(t => t.id === taskId);
+                if (!task) {
+                  console.warn('Task not found:', taskId);
+                  return;
+                }
+
+                const toColumn = evt.to.dataset.column;
+                const newIndex = evt.newIndex;
+
+                console.log('Kanban move:', taskId, 'to', toColumn, 'at index', newIndex);
+
+                // Update task location
+                if (toColumn === 'backlog') {
+                  task.location = { type: 'backlog' };
+                  task.skipState = null;
+                } else {
+                  // toColumn is a sprint ID
+                  task.location = { type: 'sprint', sprintId: toColumn };
+                  task.skipState = null;
+                }
+
+                // Update order within the column
+                const columnEl = evt.to;
+                const taskElements = columnEl.querySelectorAll('.kanban-task[data-id]');
+                taskElements.forEach((el, idx) => {
+                  const id = el.dataset.id;
+                  const t = self.tasks.find(task => task.id === id);
+                  if (t) t.order = idx;
+                });
+
+                // Trigger Alpine reactivity
+                self.tasks = [...self.tasks];
+              }
+            });
+
+            self.kanbanInstances.push(sortable);
+          });
+
+          console.log('Kanban initialized with', this.kanbanInstances.length, 'columns');
+        },
+        
+        // === IMPORT/EXPORT ===
+        parseImportText(text) {
+          if (!text || !text.trim()) return [];
+
+          const lines = text.split('\n').filter(l => l.trim());
+          return lines.map(line => {
+            // Remove markdown prefixes: - [ ], - [x], -, *
+            let title = line.trim()
+              .replace(/^[-*]\s*\[[ x]?\]\s*/, '')  // - [ ] or - [x] or * [ ]
+              .replace(/^[-*]\s+/, '')              // - or * followed by space
+              .trim();
+
+            if (!title) return null;
+
+            // Extract tags (#work, #personal)
+            const tagMatches = title.match(/#(\w+)/g) || [];
+            const tagNames = tagMatches.map(t => t.slice(1).toLowerCase());
+            title = title.replace(/#\w+/g, '').trim();
+
+            // Extract recurrence patterns
+            const recurrencePatterns = [
+              { pattern: /\bevery\s+day\b/i, rrule: 'FREQ=DAILY' },
+              { pattern: /\bdaily\b/i, rrule: 'FREQ=DAILY' },
+              { pattern: /\bevery\s+week\b/i, rrule: 'FREQ=WEEKLY' },
+              { pattern: /\bweekly\b/i, rrule: 'FREQ=WEEKLY' },
+              { pattern: /\bevery\s+month\b/i, rrule: 'FREQ=MONTHLY' },
+              { pattern: /\bmonthly\b/i, rrule: 'FREQ=MONTHLY' },
+              { pattern: /\bevery\s+monday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=MO' },
+              { pattern: /\bevery\s+tuesday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=TU' },
+              { pattern: /\bevery\s+wednesday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=WE' },
+              { pattern: /\bevery\s+thursday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=TH' },
+              { pattern: /\bevery\s+friday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=FR' },
+              { pattern: /\bevery\s+saturday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=SA' },
+              { pattern: /\bevery\s+sunday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=SU' },
+              { pattern: /\bevery\s+weekday\b/i, rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' },
+            ];
+
+            let recurrence = null;
+            for (const { pattern, rrule } of recurrencePatterns) {
+              if (pattern.test(title)) {
+                recurrence = rrule;
+                title = title.replace(pattern, '').trim();
+                break;
+              }
+            }
+
+            // Clean up extra spaces
+            title = title.replace(/\s+/g, ' ').trim();
+
+            if (!title) return null;
+
+            // Match tag names to actual tags
+            const tags = tagNames
+              .map(name => this.tags.find(t => t.name.toLowerCase() === name))
+              .filter(Boolean);
+
+            return { title, tags, recurrence };
+          }).filter(Boolean);
+        },
+
+        importTasks() {
+          const parsed = this.parseImportText(this.importText);
+
+          parsed.forEach(item => {
+            const tagPoints = {};
+            if (item.tags.length > 0) {
+              item.tags.forEach(tag => {
+                tagPoints[tag.id] = 1; // Default to 1 point per tag
+              });
+            } else if (this.importDefaultTagId) {
+              // Use selected default tag
+              tagPoints[this.importDefaultTagId] = 1;
+            } else {
+              tagPoints['untagged'] = 1;
+            }
+
+            const task = {
+              id: this.generateId(),
+              title: item.title,
+              description: '',
+              tagPoints,
+              location: { type: 'backlog' },
+              status: 'active',
+              order: this.tasks.length,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: [],
+              recurrence: item.recurrence || null
+            };
+
+            this.tasks.push(task);
+          });
+
+          this.importText = '';
+          this.importDefaultTagId = '';
+          console.log(`Imported ${parsed.length} tasks to backlog`);
+        },
+
+        // === DEV TOOLS ===
+        resetAllData() {
+          // Clear all localStorage keys used by the app
+          const keys = ['checkmate_tasks', 'checkmate_tags', 'checkmate_sprints', 'checkmate_routines', 'checkmate_settings', 'checkmate_currentView', 'checkmate_theme'];
+          keys.forEach(key => localStorage.removeItem(key));
+          // Reload the page to reinitialize
+          window.location.reload();
+        },
+
+        exportData() {
+          const data = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            tasks: this.tasks,
+            tags: this.tags,
+            sprints: this.sprints,
+            routines: this.routines,
+            settings: this.settings
+          };
+
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `checkmate-backup-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        },
+
+        importData(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const data = JSON.parse(e.target.result);
+
+              // Validate required fields
+              if (!data.tasks || !data.tags) {
+                alert('Invalid backup file: missing required data');
+                return;
+              }
+
+              if (!confirm('This will replace ALL your current data with the backup. Continue?')) {
+                return;
+              }
+
+              // Import data
+              this.tasks = data.tasks || [];
+              this.tags = data.tags || [];
+              this.sprints = data.sprints || [];
+              this.routines = data.routines || [];
+              if (data.settings) {
+                this.settings = { ...this.settings, ...data.settings };
+              }
+
+              alert('Data imported successfully!');
+            } catch (err) {
+              alert('Error reading backup file: ' + err.message);
+            }
+          };
+          reader.readAsText(file);
+
+          // Reset file input so same file can be selected again
+          event.target.value = '';
+        },
+
+        loadDemoData() {
+          // Create demo tags first (need IDs for tasks)
+          const workTagId = this.generateId();
+          const personalTagId = this.generateId();
+          const healthTagId = this.generateId();
+          const learningTagId = this.generateId();
+
+          this.tags = [
+            { id: 'untagged', name: 'Untagged', icon: '📦', color: '#6b7280', defaultCapacity: 10, description: '' },
+            { id: workTagId, name: 'Work', icon: '💼', color: '#3b82f6', defaultCapacity: 25, description: 'Work tasks' },
+            { id: personalTagId, name: 'Personal', icon: '🏠', color: '#22c55e', defaultCapacity: 15, description: 'Personal tasks' },
+            { id: healthTagId, name: 'Health', icon: '❤️', color: '#ef4444', defaultCapacity: 10, description: 'Health & fitness' },
+            { id: learningTagId, name: 'Learning', icon: '📚', color: '#8b5cf6', defaultCapacity: 10, description: 'Learning & growth' },
+          ];
+
+          this.routines = [
+            { id: this.generateId(), name: 'Work Hours', icon: '💼', color: '#3b82f6', priority: 8, taskFilterExpression: 'hasTag("Work")', activationExpression: 'isWeekday and hour >= 9 and hour < 18' },
+            { id: this.generateId(), name: 'Evening', icon: '🌙', color: '#8b5cf6', priority: 5, taskFilterExpression: 'hasAnyTag("Personal", "Health")', activationExpression: 'hour >= 18 or hour < 9' },
+            { id: this.generateId(), name: 'Weekend', icon: '☀️', color: '#f59e0b', priority: 7, taskFilterExpression: 'hasAnyTag("Personal", "Health", "Learning")', activationExpression: 'isWeekend' }
+          ];
+
+          // Get current sprint ID
+          const currentSprintId = this.sprints[0]?.id;
+          const nextSprintId = this.sprints[1]?.id;
+
+          // Tutorial/Demo tasks
+          this.tasks = [
+            // === TUTORIAL TASKS (in current sprint) ===
+            {
+              id: this.generateId(),
+              title: 'Welcome to Check Mate! Tap here to see task details',
+              description: 'This is a tutorial task. Check Mate helps you manage tasks with an ADHD-friendly approach:\n\n- Focus on ONE task at a time\n- Organize by weekly sprints\n- Filter tasks by routine (work/personal)\n- Track time with focus sessions\n\nTap "Done" when you\'ve read this!',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 0,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Try starting a Focus session (tap the play button)',
+              description: 'Focus sessions help you track time spent on tasks.\n\n1. Tap the play button on any task\n2. Work on the task\n3. When done, tap Complete to log your time\n\nSessions are saved and help you understand where your time goes.',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 1,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Switch to Tasks view to see the Kanban board',
+              description: 'The Tasks view shows all your tasks organized in columns:\n\n- **Backlog**: Tasks not yet scheduled\n- **This Week**: Current sprint tasks\n- **Next Week**: Upcoming sprint tasks\n\nDrag tasks between columns to schedule them!',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 2,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Open the menu (hamburger icon) to explore settings',
+              description: 'The menu contains:\n\n- **Routine selector**: Switch between Work/Personal/etc.\n- **Manage Tags**: Create custom categories\n- **Manage Routines**: Set up time-based filters\n- **Dev Tools**: Reset data or reload demo',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 3,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === SAMPLE WORK TASKS ===
+            {
+              id: this.generateId(),
+              title: 'Review quarterly report',
+              description: 'Go through the Q4 numbers and prepare summary.',
+              tagPoints: { [workTagId]: 3 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 10,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Prepare presentation slides',
+              description: 'Create slides for the team meeting.',
+              tagPoints: { [workTagId]: 2 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 11,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Reply to client emails',
+              description: 'Catch up on pending email threads.',
+              tagPoints: { [workTagId]: 1 },
+              location: { type: 'sprint', sprintId: nextSprintId },
+              status: 'active',
+              order: 0,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === SAMPLE PERSONAL TASKS ===
+            {
+              id: this.generateId(),
+              title: 'Morning workout',
+              description: '30 min cardio + stretching',
+              tagPoints: { [healthTagId]: 2 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 20,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Grocery shopping',
+              description: 'Weekly groceries - check the list in the fridge.',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'sprint', sprintId: currentSprintId },
+              status: 'active',
+              order: 21,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Read a chapter of current book',
+              description: 'Continue reading "Atomic Habits"',
+              tagPoints: { [learningTagId]: 1 },
+              location: { type: 'sprint', sprintId: nextSprintId },
+              status: 'active',
+              order: 1,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === BACKLOG TASKS ===
+            {
+              id: this.generateId(),
+              title: 'Plan vacation itinerary',
+              description: 'Research destinations and book accommodations.',
+              tagPoints: { [personalTagId]: 2 },
+              location: { type: 'backlog' },
+              status: 'active',
+              order: 0,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+            {
+              id: this.generateId(),
+              title: 'Learn a new programming language',
+              description: 'Start with Rust or Go tutorials.',
+              tagPoints: { [learningTagId]: 5 },
+              location: { type: 'backlog' },
+              status: 'active',
+              order: 1,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            },
+
+            // === RECURRING TASK TEMPLATE ===
+            {
+              id: this.generateId(),
+              title: 'Weekly review',
+              description: 'Review completed tasks and plan next week.',
+              tagPoints: { [personalTagId]: 1 },
+              location: { type: 'backlog' },
+              status: 'active',
+              recurrence: 'FREQ=WEEKLY;BYDAY=SU',
+              order: 100,
+              createdAt: new Date().toISOString(),
+              sessions: [],
+              comments: []
+            }
+          ];
+
+          console.log('Demo data loaded!');
+        },
+
+        initializeDefaults() {
+          if (this.tags.length === 0) {
+            this.tags = [
+              { id: 'untagged', name: 'Untagged', icon: '📦', color: '#6b7280', defaultCapacity: 10, description: '' },
+              { id: this.generateId(), name: 'Work', icon: '💼', color: '#3b82f6', defaultCapacity: 25, description: 'Work tasks' },
+              { id: this.generateId(), name: 'Personal', icon: '🏠', color: '#22c55e', defaultCapacity: 15, description: 'Personal tasks' },
+              { id: this.generateId(), name: 'Health', icon: '❤️', color: '#ef4444', defaultCapacity: 10, description: 'Health & fitness' },
+              { id: this.generateId(), name: 'Learning', icon: '📚', color: '#8b5cf6', defaultCapacity: 10, description: 'Learning & growth' },
+            ];
+          }
+          
+          if (this.routines.length === 0) {
+            this.routines = [
+              { id: this.generateId(), name: 'Work Hours', icon: '💼', color: '#3b82f6', priority: 8, taskFilterExpression: 'hasTag("Work")', activationExpression: 'isWeekday and hour >= 9 and hour < 18' },
+              { id: this.generateId(), name: 'Evening', icon: '🌙', color: '#8b5cf6', priority: 5, taskFilterExpression: 'hasAnyTag("Personal", "Health")', activationExpression: 'hour >= 18 or hour < 9' },
+              { id: this.generateId(), name: 'Weekend', icon: '☀️', color: '#f59e0b', priority: 7, taskFilterExpression: 'hasAnyTag("Personal", "Health", "Learning")', activationExpression: 'isWeekend' }
+            ];
+          } else {
+            // Migration: ensure all routines have taskFilterExpression
+            this.routines.forEach(routine => {
+              if (!routine.taskFilterExpression) {
+                routine.taskFilterExpression = 'true';
+              }
+            });
+          }
+        },
+        
+        initializeSprints() {
+          const now = new Date();
+          const currentSunday = this.getStartOfWeek(now);
+          
+          const requiredStarts = [currentSunday, this.addDays(currentSunday, 7), this.addDays(currentSunday, 14)];
+          
+          requiredStarts.forEach((startDate) => {
+            const exists = this.sprints.find(s => new Date(s.startDate).toDateString() === startDate.toDateString());
+            if (!exists) {
+              this.sprints.push({
+                id: this.generateId(),
+                startDate: startDate.toISOString(),
+                endDate: this.addDays(startDate, 6).toISOString(),
+                capacityOverrides: {},
+                taskIds: []
+              });
+            }
+          });
+          
+          this.sprints.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+          
+          const currentIndex = this.sprints.findIndex(s => new Date(s.startDate).toDateString() === currentSunday.toDateString());
+          
+          if (currentIndex > 0) {
+            this.sprints.slice(0, currentIndex).forEach(pastSprint => {
+              this.tasks.filter(t => t.location.type === 'sprint' && t.location.sprintId === pastSprint.id)
+                .forEach(task => {
+                  task.location = { type: 'backlog' };
+                  task.sprintHistory = task.sprintHistory || [];
+                  task.sprintHistory.push(pastSprint.id);
+                });
+            });
+            this.sprints = this.sprints.slice(currentIndex, currentIndex + 3);
+          }
+          
+          if (this.sprints.length > 3) {
+            this.sprints = this.sprints.slice(0, 3);
+          }
+        },
+        
+        // === HELPER FUNCTIONS ===
+        generateId() {
+          return 'id_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        },
+        
+        getTagById(tagId) {
+          return this.tags.find(t => t.id === tagId);
+        },
+        
+        getTaskById(taskId) {
+          return this.tasks.find(t => t.id === taskId);
+        },
+        
+        getTaskPrimaryTag(task) {
+          const firstTagId = Object.keys(task.tagPoints)[0];
+          return this.getTagById(firstTagId);
+        },
+        
+        getTaskAge(task) {
+          const created = new Date(task.createdAt);
+          const diff = this.today - created;
+          return Math.floor(diff / (1000 * 60 * 60 * 24));
+        },
+        
+        formatDate(date) {
+          if (!date) return '';
+          const d = new Date(date);
+          return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        },
+        
+        formatSessionTime(seconds) {
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        },
+        
+        getStartOfWeek(date) {
+          const d = new Date(date);
+          const day = d.getDay();
+          d.setDate(d.getDate() - day);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        },
+        
+        addDays(date, days) {
+          const d = new Date(date);
+          d.setDate(d.getDate() + days);
+          return d;
+        },
+        
+        checkSkipReturns() {
+          const now = new Date();
+          this.tasks.forEach(task => {
+            if (task.skipState?.type === 'for_day' && new Date(task.skipState.returnAt) <= now) {
+              task.skipState.returned = true;
+            }
+          });
+        },
+        
+        // === EXPRESSION EVALUATOR ===
+        evaluateTaskFilter(task, expression) {
+          if (!expression || expression.trim() === '' || expression === 'true') return true;
+          if (expression === 'false') return false;
+          
+          try {
+            const tagIds = Object.keys(task.tagPoints);
+            const tagNames = tagIds.map(id => this.getTagById(id)?.name?.toLowerCase()).filter(Boolean);
+            
+            const context = {
+              title: task.title,
+              description: task.description || '',
+              status: task.status,
+              age: this.getTaskAge(task),
+              sprintCount: task.sprintHistory?.length || 0,
+              inBacklog: task.location.type === 'backlog',
+              inSprint: task.location.type === 'sprint',
+              points: Object.values(task.tagPoints).reduce((a, b) => a + b, 0)
+            };
+            
+            const funcs = {
+              hasTag: (name) => tagNames.includes(name.toLowerCase()),
+              hasAnyTag: (...names) => names.some(n => tagNames.includes(n.toLowerCase())),
+              hasAllTags: (...names) => names.every(n => tagNames.includes(n.toLowerCase()))
+            };
+            
+            return this.safeEval(expression, context, funcs);
+          } catch (e) {
+            console.error('Task filter eval error:', e, expression);
+            return true;
+          }
+        },
+        
+        evaluateActivationExpression(expression) {
+          if (!expression || expression.trim() === '' || expression === 'false') return false;
+          if (expression === 'true') return true;
+          
+          try {
+            const now = this.today;
+            const context = {
+              hour: now.getHours(),
+              minute: now.getMinutes(),
+              dayOfWeek: this.DAYS[now.getDay()],
+              date: now.getDate(),
+              month: now.getMonth() + 1,
+              year: now.getFullYear(),
+              isWeekday: now.getDay() > 0 && now.getDay() < 6,
+              isWeekend: now.getDay() === 0 || now.getDay() === 6,
+              time: now.getHours() * 60 + now.getMinutes()
+            };
+            
+            return this.safeEval(expression, context, {});
+          } catch (e) {
+            console.error('Activation eval error:', e, expression);
+            return false;
+          }
+        },
+        
+        // Safe expression evaluation using Filtrex (no eval!)
+        safeEval(expression, context, funcs) {
+          try {
+            // Normalize expression: convert 'and'/'or' to filtrex operators
+            let expr = expression
+              .replace(/\band\b/gi, ' and ')
+              .replace(/\bor\b/gi, ' or ')
+              .replace(/\bnot\b/gi, ' not ');
+
+            // Compile expression with custom functions
+            const filter = filtrex.compileExpression(expr, { extraFunctions: funcs });
+            return Boolean(filter(context));
+          } catch (e) {
+            console.error('Filtrex error:', e, expression);
+            return true; // Default to true on error
+          }
+        },
+        
+        // === TASK OPERATIONS ===
+        createTask() {
+          const tagPoints = {};
+          Object.entries(this.newTask.tagPoints).forEach(([tagId, points]) => {
+            if (points) tagPoints[tagId] = parseInt(points);
+          });
+          
+          if (Object.keys(tagPoints).length === 0) {
+            alert('Please assign points to at least one tag');
+            return;
+          }
+          
+          // Check if title contains recurrence pattern
+          const parsed = this.parseRecurrence(this.newTask.title);
+
+          const task = {
+            id: this.generateId(),
+            title: parsed.valid ? parsed.cleanTitle : this.newTask.title,
+            description: this.newTask.description || '',
+            status: 'active',
+            tagPoints: tagPoints,
+            location: { type: 'backlog' },
+            createdAt: new Date().toISOString(),
+            comments: [],
+            sessions: [],
+            skipState: null,
+            recurrence: parsed.valid ? parsed.rruleString : null,
+            parentId: null,
+            externalSource: null,
+            sprintHistory: []
+          };
+
+          this.tasks.push(task);
+          this.newTask = { title: '', description: '', tagPoints: {} };
+          this.showCreateTaskModal = false;
+        },
+        
+        updateTask(task) {
+          const index = this.tasks.findIndex(t => t.id === task.id);
+          if (index !== -1) this.tasks[index] = { ...task };
+        },
+        
+        completeTask(task) {
+          task.status = 'completed';
+          task.completedAt = new Date().toISOString();
+          this.updateTask(task);
+        },
+        
+        openCancelTaskModal(task) {
+          this.taskToCancel = task;
+          this.cancelJustification = '';
+          this.showCancelTaskModal = true;
+        },
+
+        confirmCancelTask() {
+          if (!this.cancelJustification.trim()) return;
+
+          const comment = {
+            id: this.generateId(),
+            content: this.cancelJustification,
+            createdAt: new Date().toISOString(),
+            updatedAt: null,
+            cancelJustification: true
+          };
+
+          // Find the actual task in the tasks array
+          const actualTask = this.tasks.find(t => t.id === this.taskToCancel.id);
+          if (!actualTask) return;
+
+          actualTask.comments = actualTask.comments || [];
+          actualTask.comments.push(comment);
+          actualTask.status = 'canceled';
+          actualTask.canceledAt = new Date().toISOString();
+
+          this.showCancelTaskModal = false;
+          this.showTaskDetailModal = false;
+          this.taskToCancel = null;
+          this.cancelJustification = '';
+        },
+        
+        moveTaskToSprint(task, sprint) {
+          task.location = { type: 'sprint', sprintId: sprint.id };
+          task.skipState = null;
+          this.updateTask(task);
+        },
+        
+        moveTaskToBacklog(task) {
+          if (task.location.type === 'sprint') {
+            task.sprintHistory = task.sprintHistory || [];
+            task.sprintHistory.push(task.location.sprintId);
+          }
+          task.location = { type: 'backlog' };
+          task.skipState = null;
+          this.updateTask(task);
+        },
+        
+        skipTaskForNow(task) {
+          task.skipState = { type: 'for_now', skippedAt: new Date().toISOString() };
+          this.updateTask(task);
+        },
+        
+        openSkipForDayModal(task) {
+          this.taskToSkip = task;
+          this.skipJustification = '';
+          this.showSkipForDayModal = true;
+        },
+        
+        confirmSkipForDay() {
+          if (!this.skipJustification.trim()) return;
+          
+          const comment = {
+            id: this.generateId(),
+            content: this.skipJustification,
+            createdAt: new Date().toISOString(),
+            updatedAt: null,
+            skipJustification: true
+          };
+          
+          this.taskToSkip.comments = this.taskToSkip.comments || [];
+          this.taskToSkip.comments.push(comment);
+          
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(0, 0, 0, 0);
+          
+          this.taskToSkip.skipState = {
+            type: 'for_day',
+            skippedAt: new Date().toISOString(),
+            returnAt: tomorrow.toISOString(),
+            justificationCommentId: comment.id
+          };
+          
+          this.updateTask(this.taskToSkip);
+          this.showSkipForDayModal = false;
+          this.taskToSkip = null;
+        },
+        
+        clearSkipState(task) {
+          task.skipState = null;
+          this.updateTask(task);
+        },
+        
+        openTaskDetail(task) {
+          this.selectedTask = JSON.parse(JSON.stringify(task));
+          this.newCommentContent = '';
+          this.showTaskDetailModal = true;
+        },
+        
+        saveTaskDetail() {
+          if (!this.selectedTask) return;
+          const index = this.tasks.findIndex(t => t.id === this.selectedTask.id);
+          if (index !== -1) this.tasks[index] = this.selectedTask;
+        },
+        
+        addComment(task) {
+          if (!this.newCommentContent.trim()) return;
+          
+          const actualTask = this.tasks.find(t => t.id === task.id);
+          if (!actualTask) return;
+          
+          actualTask.comments = actualTask.comments || [];
+          actualTask.comments.push({
+            id: this.generateId(),
+            content: this.newCommentContent,
+            createdAt: new Date().toISOString(),
+            updatedAt: null,
+            skipJustification: false
+          });
+          
+          this.selectedTask = JSON.parse(JSON.stringify(actualTask));
+          this.newCommentContent = '';
+        },
+        
+        deleteComment(task, comment) {
+          const actualTask = this.tasks.find(t => t.id === task.id);
+          if (!actualTask) return;
+          
+          actualTask.comments = actualTask.comments.filter(c => c.id !== comment.id);
+          this.selectedTask = JSON.parse(JSON.stringify(actualTask));
+        },
+
+        getUnassignedTags() {
+          if (!this.selectedTask) return [];
+          return this.tags.filter(t => !this.selectedTask.tagPoints[t.id]);
+        },
+
+        addTagToTask(tagId) {
+          if (!this.selectedTask) return;
+          this.selectedTask.tagPoints[tagId] = 1;
+          this.saveTaskDetail();
+        },
+
+        removeTagFromTask(tagId) {
+          if (!this.selectedTask) return;
+          if (Object.keys(this.selectedTask.tagPoints).length <= 1) {
+            alert('Task must have at least one tag');
+            return;
+          }
+          delete this.selectedTask.tagPoints[tagId];
+          this.saveTaskDetail();
+        },
+
+        spawnRecurringInstance(template) {
+          const instance = {
+            id: this.generateId(),
+            title: template.title,
+            description: template.description,
+            status: 'active',
+            tagPoints: { ...template.tagPoints },
+            location: { type: 'backlog' },
+            createdAt: new Date().toISOString(),
+            comments: [],
+            sessions: [],
+            skipState: null,
+            recurrence: null,
+            parentId: template.id,
+            externalSource: null,
+            sprintHistory: []
+          };
+          
+          this.tasks.push(instance);
+          return instance;
+        },
+        
+        getNextOccurrence(template) {
+          if (!template.recurrence) return null;
+          try {
+            const rule = rrule.RRule.fromString('DTSTART:' + new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z\nRRULE:' + template.recurrence);
+            return rule.after(new Date());
+          } catch (e) {
+            console.error('RRule error:', e);
+            return new Date();
+          }
+        },
+        
+        describeRRule(rruleStr) {
+          if (!rruleStr) return '';
+          try {
+            const rule = rrule.RRule.fromString('RRULE:' + rruleStr);
+            return rule.toText();
+          } catch (e) {
+            return rruleStr;
+          }
+        },
+
+        parseRecurrence(text) {
+          if (!text || !text.trim()) {
+            return { valid: false, rruleString: null, description: '', cleanTitle: text };
+          }
+
+          // Look for "every ..." pattern in the text
+          const everyMatch = text.match(/\bevery\s+.+$/i);
+          if (!everyMatch) {
+            return { valid: false, rruleString: null, description: '', cleanTitle: text };
+          }
+
+          try {
+            // Pass only the "every ..." part to fromText
+            const recurrenceText = everyMatch[0];
+            const rule = rrule.RRule.fromText(recurrenceText);
+            const recurrenceDesc = rule.toText();
+
+            // Remove the recurrence part from title
+            const cleanTitle = text.replace(/\s*\bevery\s+.+$/i, '').trim();
+
+            return {
+              valid: true,
+              rruleString: rule.toString().replace('RRULE:', ''),
+              description: recurrenceDesc,
+              cleanTitle: cleanTitle || text.trim()
+            };
+          } catch (e) {
+            return { valid: false, rruleString: null, description: '', cleanTitle: text };
+          }
+        },
+        
+        // === SPRINT OPERATIONS ===
+        getSprintTasks(sprint) {
+          if (!sprint) return [];
+          
+          let tasks = this.tasks.filter(t => t.location.type === 'sprint' && t.location.sprintId === sprint.id && t.status === 'active');
+          
+          if (this.selectedTagFilters.length > 0) {
+            tasks = tasks.filter(t => Object.keys(t.tagPoints).some(tagId => this.selectedTagFilters.includes(tagId)));
+          }
+          
+          if (this.activeRoutine) {
+            tasks = tasks.filter(t => this.evaluateTaskFilter(t, this.activeRoutine.taskFilterExpression));
+          }
+          
+          return tasks.sort((a, b) => {
+            // Returned tasks bubble to top
+            if (a.skipState?.type === 'for_day' && a.skipState?.returned) return -1;
+            if (b.skipState?.type === 'for_day' && b.skipState?.returned) return 1;
+            // Skipped-for-day tasks go to bottom
+            if (a.skipState?.type === 'for_day' && !a.skipState?.returned) return 1;
+            if (b.skipState?.type === 'for_day' && !b.skipState?.returned) return -1;
+            // Skipped-for-now go after normal tasks
+            if (a.skipState?.type === 'for_now' && !b.skipState) return 1;
+            if (b.skipState?.type === 'for_now' && !a.skipState) return -1;
+            // Otherwise sort by order
+            return (a.order || 0) - (b.order || 0);
+          });
+        },
+
+        handleTaskReorder(itemId, newPosition) {
+          const sprintTasks = this.getSprintTasks(this.selectedSprint);
+          const taskIds = sprintTasks.map(t => t.id);
+
+          // Remove from old position and insert at new
+          const oldIndex = taskIds.indexOf(itemId);
+          if (oldIndex !== -1) {
+            taskIds.splice(oldIndex, 1);
+          }
+          taskIds.splice(newPosition, 0, itemId);
+
+          // Update order values
+          taskIds.forEach((id, index) => {
+            const task = this.tasks.find(t => t.id === id);
+            if (task) task.order = index;
+          });
+        },
+
+        handleTodayReorder(itemId, newPosition) {
+          const taskIds = this.todayTasks.map(t => t.id);
+
+          // Remove from old position and insert at new
+          const oldIndex = taskIds.indexOf(itemId);
+          if (oldIndex !== -1) {
+            taskIds.splice(oldIndex, 1);
+          }
+          taskIds.splice(newPosition, 0, itemId);
+
+          // Update order values
+          taskIds.forEach((id, index) => {
+            const task = this.tasks.find(t => t.id === id);
+            if (task) task.order = index;
+          });
+        },
+
+        handleTodayReorderByDataId(item, newPosition, sortContainer) {
+          // Since we don't use x-sort:item, read the new order directly from the DOM
+          const container = document.querySelector('[x-sort="handleTodayReorderByDataId"]');
+          if (!container) return;
+
+          const items = container.querySelectorAll('[data-id]');
+          const newOrder = Array.from(items).map(el => el.dataset.id);
+
+          console.log('New DOM order:', newOrder);
+
+          // Update order values on actual tasks
+          newOrder.forEach((id, index) => {
+            const task = this.tasks.find(t => t.id === id);
+            if (task) task.order = index;
+          });
+        },
+
+        getSprintLabel(index) {
+          if (index === 0) return 'Current Sprint';
+          if (index === 1) return 'Next Sprint';
+          if (index === 2) return 'Sprint +2';
+          return `Sprint ${index}`;
+        },
+
+        getSprintIcon(index) {
+          if (index === 0) return 'calendar-outline';
+          if (index === 1) return 'arrow-forward-outline';
+          if (index === 2) return 'play-skip-forward-outline';
+          return 'calendar-outline';
+        },
+        
+        getDaysRemaining(sprint) {
+          const end = new Date(sprint.endDate);
+          const diff = Math.ceil((end - this.today) / (1000 * 60 * 60 * 24));
+          return Math.max(0, diff + 1);
+        },
+        
+        getSprintPointsForTag(sprint, tagId) {
+          return this.tasks
+            .filter(t => t.location.type === 'sprint' && t.location.sprintId === sprint.id && t.status === 'active')
+            .reduce((sum, task) => sum + (task.tagPoints[tagId] || 0), 0);
+        },
+        
+        getCapacityForTag(sprint, tagId) {
+          if (sprint.capacityOverrides && sprint.capacityOverrides[tagId]) {
+            return sprint.capacityOverrides[tagId];
+          }
+          const tag = this.getTagById(tagId);
+          return tag?.defaultCapacity || 10;
+        },
+        
+        getSprintHealth(sprint) {
+          if (!sprint) return { overall: 'on_track' };
+          let worstHealth = 'on_track';
+          
+          this.tags.forEach(tag => {
+            const health = this.getTagHealth(sprint, tag.id);
+            if (health === 'off_track') worstHealth = 'off_track';
+            else if (health === 'at_risk' && worstHealth !== 'off_track') worstHealth = 'at_risk';
+          });
+          
+          return { overall: worstHealth };
+        },
+        
+        getTagHealth(sprint, tagId) {
+          const assigned = this.getSprintPointsForTag(sprint, tagId);
+          const capacity = this.getCapacityForTag(sprint, tagId);
+          const daysRemaining = Math.max(1, this.getDaysRemaining(sprint));
+          
+          if (assigned === 0) return 'on_track';
+          
+          const burnRateNeeded = assigned / daysRemaining;
+          const sustainableRate = capacity / 7;
+          
+          if (burnRateNeeded > sustainableRate * 1.5) return 'off_track';
+          if (burnRateNeeded > sustainableRate * 1.2) return 'at_risk';
+          return 'on_track';
+        },
+        
+        getBurnRateNeeded(sprint, tagId) {
+          const assigned = this.getSprintPointsForTag(sprint, tagId);
+          const daysRemaining = Math.max(1, this.getDaysRemaining(sprint));
+          return assigned / daysRemaining;
+        },
+        
+        editSprintCapacity(sprint, tag) {
+          this.capacityEditSprint = sprint;
+          this.capacityEditTag = tag;
+          this.capacityEditValue = this.getCapacityForTag(sprint, tag.id);
+          this.showCapacityEditModal = true;
+        },
+        
+        saveCapacityOverride() {
+          if (!this.capacityEditSprint.capacityOverrides) {
+            this.capacityEditSprint.capacityOverrides = {};
+          }
+          this.capacityEditSprint.capacityOverrides[this.capacityEditTag.id] = this.capacityEditValue;
+          this.showCapacityEditModal = false;
+        },
+        
+        // === SESSION OPERATIONS ===
+        startSession(task) {
+          if (this.activeSession) return;
+          
+          const session = {
+            id: this.generateId(),
+            taskId: task.id,
+            status: 'in_progress',
+            startedAt: new Date().toISOString(),
+            endedAt: null,
+            focusLevel: null,
+            comments: []
+          };
+          
+          const actualTask = this.tasks.find(t => t.id === task.id);
+          actualTask.sessions = actualTask.sessions || [];
+          actualTask.sessions.push(session);
+          
+          this.activeSession = session;
+          this.sessionElapsed = 0;
+          
+          this.sessionInterval = setInterval(() => {
+            this.sessionElapsed++;
+          }, 1000);
+          
+          this.showTaskDetailModal = false;
+        },
+        
+        openCompleteSessionModal() {
+          this.sessionFocusLevel = 'neutral';
+          this.sessionNote = '';
+          this.markTaskComplete = false;
+          this.showCompleteSessionModal = true;
+        },
+        
+        confirmCompleteSession() {
+          if (!this.activeSession) return;
+          
+          const task = this.getTaskById(this.activeSession.taskId);
+          const session = task.sessions.find(s => s.id === this.activeSession.id);
+          
+          session.status = 'completed';
+          session.endedAt = new Date().toISOString();
+          session.focusLevel = this.sessionFocusLevel;
+          
+          if (this.sessionNote.trim()) {
+            session.comments = [{ id: this.generateId(), content: this.sessionNote, createdAt: new Date().toISOString() }];
+          }
+          
+          if (this.markTaskComplete) {
+            this.completeTask(task);
+          }
+          
+          this.cleanupSession();
+          this.showCompleteSessionModal = false;
+        },
+        
+        abandonSession() {
+          if (!this.activeSession) return;
+          
+          const task = this.getTaskById(this.activeSession.taskId);
+          const session = task.sessions.find(s => s.id === this.activeSession.id);
+          
+          session.status = 'abandoned';
+          session.endedAt = new Date().toISOString();
+          
+          this.cleanupSession();
+        },
+        
+        cleanupSession() {
+          clearInterval(this.sessionInterval);
+          this.activeSession = null;
+          this.sessionElapsed = 0;
+          this.sessionFocusLevel = 'neutral';
+          this.sessionNote = '';
+          this.markTaskComplete = false;
+        },
+
+        openAddManualSessionModal(task) {
+          this.manualSessionTask = task;
+          this.manualSessionDuration = 25;
+          this.manualSessionDate = new Date().toISOString().split('T')[0];
+          this.manualSessionFocusLevel = 'neutral';
+          this.manualSessionNote = '';
+          this.showAddManualSessionModal = true;
+        },
+
+        addManualSession() {
+          if (!this.manualSessionDuration || this.manualSessionDuration < 1) return;
+
+          // Calculate start/end times based on date and duration
+          const endDate = new Date(this.manualSessionDate + 'T12:00:00');
+          const startDate = new Date(endDate.getTime() - (this.manualSessionDuration * 60 * 1000));
+
+          const session = {
+            id: this.generateId(),
+            taskId: this.manualSessionTask.id,
+            status: 'completed',
+            startedAt: startDate.toISOString(),
+            endedAt: endDate.toISOString(),
+            focusLevel: this.manualSessionFocusLevel,
+            comments: this.manualSessionNote.trim()
+              ? [{ id: this.generateId(), content: this.manualSessionNote, createdAt: new Date().toISOString() }]
+              : [],
+            manual: true
+          };
+
+          const actualTask = this.tasks.find(t => t.id === this.manualSessionTask.id);
+          actualTask.sessions = actualTask.sessions || [];
+          actualTask.sessions.push(session);
+
+          // Update selectedTask if viewing task detail
+          if (this.selectedTask?.id === actualTask.id) {
+            this.selectedTask = JSON.parse(JSON.stringify(actualTask));
+          }
+
+          this.showAddManualSessionModal = false;
+          this.manualSessionTask = null;
+        },
+
+        // === TAG OPERATIONS ===
+        addTag() {
+          if (!this.newTagName.trim()) return;
+          
+          this.tags.push({
+            id: this.generateId(),
+            name: this.newTagName,
+            icon: this.newTagIcon || '📌',
+            color: this.newTagColor || '#6366f1',
+            defaultCapacity: this.newTagCapacity || 20,
+            description: ''
+          });
+          
+          this.newTagName = '';
+          this.newTagIcon = '📌';
+          this.newTagColor = '#6366f1';
+          this.newTagCapacity = 20;
+        },
+        
+        updateTag(tag) {
+          const index = this.tags.findIndex(t => t.id === tag.id);
+          if (index !== -1) this.tags[index] = { ...tag };
+        },
+        
+        deleteTag(tag) {
+          if (tag.id === 'untagged') {
+            alert('Cannot delete the Untagged tag');
+            return;
+          }
+          
+          const tasksWithTag = this.tasks.filter(t => t.tagPoints[tag.id]);
+          if (tasksWithTag.length > 0) {
+            alert(`Cannot delete tag "${tag.name}" - ${tasksWithTag.length} task(s) use it`);
+            return;
+          }
+          
+          this.tags = this.tags.filter(t => t.id !== tag.id);
+        },
+        
+        toggleTagFilter(tagId) {
+          if (tagId === null) {
+            this.selectedTagFilters = [];
+          } else {
+            const index = this.selectedTagFilters.indexOf(tagId);
+            if (index === -1) {
+              this.selectedTagFilters.push(tagId);
+            } else {
+              this.selectedTagFilters.splice(index, 1);
+            }
+          }
+        },
+        
+        // === ROUTINE OPERATIONS ===
+        addRoutine() {
+          if (!this.newRoutineName.trim()) return;
+          
+          this.routines.push({
+            id: this.generateId(),
+            name: this.newRoutineName,
+            icon: this.newRoutineIcon || '🔄',
+            color: this.newRoutineColor || '#6366f1',
+            priority: this.newRoutinePriority || 5,
+            taskFilterExpression: this.newRoutineFilter || 'true',
+            activationExpression: this.newRoutineActivation || 'false'
+          });
+          
+          this.newRoutineName = '';
+          this.newRoutineIcon = '🏠';
+          this.newRoutineColor = '#6366f1';
+          this.newRoutinePriority = 5;
+          this.newRoutineFilter = '';
+          this.newRoutineActivation = '';
+        },
+        
+        updateRoutine(routine) {
+          const index = this.routines.findIndex(r => r.id === routine.id);
+          if (index !== -1) this.routines[index] = { ...routine };
+        },
+        
+        deleteRoutine(routine) {
+          this.routines = this.routines.filter(r => r.id !== routine.id);
+        },
+        
+        clearRoutineOverride() {
+          this.manualRoutineId = '';
+        },
+
+        // === STATS HELPERS ===
+        getStartOfDay(date = new Date()) {
+          const d = new Date(date);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        },
+
+        getStartOfWeek(date = new Date()) {
+          const d = new Date(date);
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+          d.setDate(diff);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        },
+
+        getCompletedTasksInRange(startDate, endDate) {
+          return this.tasks.filter(t => {
+            // Include completed tasks
+            if (t.status === 'completed' && t.completedAt) {
+              const timestamp = new Date(t.completedAt);
+              return timestamp >= startDate && timestamp < endDate;
+            }
+            // Include canceled tasks
+            if (t.status === 'canceled' && t.canceledAt) {
+              const timestamp = new Date(t.canceledAt);
+              return timestamp >= startDate && timestamp < endDate;
+            }
+            return false;
+          });
+        },
+
+        getTodayCompletedTasks() {
+          const start = this.getStartOfDay();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 1);
+          return this.getCompletedTasksInRange(start, end);
+        },
+
+        getYesterdayCompletedTasks() {
+          const todayStart = this.getStartOfDay();
+          const yesterdayStart = new Date(todayStart);
+          yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+          return this.getCompletedTasksInRange(yesterdayStart, todayStart);
+        },
+
+        getWeekCompletedTasks() {
+          const start = this.getStartOfWeek();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 7);
+          return this.getCompletedTasksInRange(start, end);
+        },
+
+        getLastWeekCompletedTasks() {
+          const thisWeekStart = this.getStartOfWeek();
+          const lastWeekStart = new Date(thisWeekStart);
+          lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+          return this.getCompletedTasksInRange(lastWeekStart, thisWeekStart);
+        },
+
+        getPointsFromTasks(tasks) {
+          return tasks.reduce((total, task) => {
+            return total + Object.values(task.tagPoints || {}).reduce((sum, p) => sum + p, 0);
+          }, 0);
+        },
+
+        getTodayPoints() {
+          return this.getPointsFromTasks(this.getTodayCompletedTasks());
+        },
+
+        getWeekPoints() {
+          return this.getPointsFromTasks(this.getWeekCompletedTasks());
+        },
+
+        getLastWeekPoints() {
+          return this.getPointsFromTasks(this.getLastWeekCompletedTasks());
+        },
+
+        getSessionsInRange(startDate, endDate) {
+          const sessions = [];
+          this.tasks.forEach(task => {
+            (task.sessions || []).forEach(session => {
+              if (session.status === 'completed' && session.endedAt) {
+                const ended = new Date(session.endedAt);
+                if (ended >= startDate && ended < endDate) {
+                  sessions.push({ ...session, taskId: task.id });
+                }
+              }
+            });
+          });
+          return sessions;
+        },
+
+        getSessionDuration(session) {
+          if (!session.startedAt || !session.endedAt) return 0;
+          return (new Date(session.endedAt) - new Date(session.startedAt)) / 1000; // seconds
+        },
+
+        getTodayFocusTime() {
+          const start = this.getStartOfDay();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 1);
+          const sessions = this.getSessionsInRange(start, end);
+          return sessions.reduce((total, s) => total + this.getSessionDuration(s), 0);
+        },
+
+        getWeekFocusTime() {
+          const start = this.getStartOfWeek();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 7);
+          const sessions = this.getSessionsInRange(start, end);
+          return sessions.reduce((total, s) => total + this.getSessionDuration(s), 0);
+        },
+
+        formatDuration(seconds) {
+          const hrs = Math.floor(seconds / 3600);
+          const mins = Math.floor((seconds % 3600) / 60);
+          if (hrs > 0) return `${hrs}h ${mins}m`;
+          return `${mins}m`;
+        },
+
+        getTodaySessions() {
+          const start = this.getStartOfDay();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 1);
+          return this.getSessionsInRange(start, end);
+        },
+
+        getCurrentStreak() {
+          let streak = 0;
+          const today = this.getStartOfDay();
+          let checkDate = new Date(today);
+
+          // Check if today has completions
+          const todayTasks = this.getTodayCompletedTasks();
+          if (todayTasks.length === 0) {
+            // Check yesterday instead as starting point
+            checkDate.setDate(checkDate.getDate() - 1);
+          }
+
+          while (true) {
+            const dayStart = new Date(checkDate);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+
+            const completed = this.getCompletedTasksInRange(dayStart, dayEnd);
+            if (completed.length === 0) break;
+
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+
+            // Safety limit
+            if (streak > 365) break;
+          }
+
+          return streak;
+        },
+
+        getWeekPointsByTag() {
+          const weekTasks = this.getWeekCompletedTasks();
+          const byTag = {};
+
+          weekTasks.forEach(task => {
+            Object.entries(task.tagPoints || {}).forEach(([tagId, points]) => {
+              byTag[tagId] = (byTag[tagId] || 0) + points;
+            });
+          });
+
+          return byTag;
+        },
+
+        getDailyActivityPattern() {
+          const weekStart = this.getStartOfWeek();
+          const pattern = [];
+
+          for (let i = 0; i < 7; i++) {
+            const dayStart = new Date(weekStart);
+            dayStart.setDate(dayStart.getDate() + i);
+            const dayEnd = new Date(dayStart);
+            dayEnd.setDate(dayEnd.getDate() + 1);
+
+            const tasks = this.getCompletedTasksInRange(dayStart, dayEnd);
+            pattern.push({
+              day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+              count: tasks.length,
+              points: this.getPointsFromTasks(tasks),
+              isToday: dayStart.toDateString() === new Date().toDateString()
+            });
+          }
+
+          return pattern;
+        },
+
+        getFocusQualityStats() {
+          const start = this.getStartOfWeek();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 7);
+          const sessions = this.getSessionsInRange(start, end);
+
+          const total = sessions.length;
+          const positive = sessions.filter(s => s.focusLevel === 'positive').length;
+          const neutral = sessions.filter(s => s.focusLevel === 'neutral').length;
+          const negative = sessions.filter(s => s.focusLevel === 'negative').length;
+
+          return {
+            total,
+            positive,
+            neutral,
+            negative,
+            positivePercent: total > 0 ? Math.round((positive / total) * 100) : 0,
+            avgDuration: total > 0 ? sessions.reduce((sum, s) => sum + this.getSessionDuration(s), 0) / total : 0
+          };
+        },
+
+        getTopPointsTag() {
+          const byTag = this.getWeekPointsByTag();
+          let topTagId = null;
+          let topPoints = 0;
+
+          Object.entries(byTag).forEach(([tagId, points]) => {
+            if (points > topPoints) {
+              topPoints = points;
+              topTagId = tagId;
+            }
+          });
+
+          return topTagId ? this.getTagById(topTagId) : null;
+        },
+
+        // === RESET ===
+        resetAllData() {
+          if (!confirm('This will delete ALL data. Are you sure?')) return;
+          localStorage.removeItem('checkmate_tasks');
+          localStorage.removeItem('checkmate_tags');
+          localStorage.removeItem('checkmate_sprints');
+          localStorage.removeItem('checkmate_routines');
+          localStorage.removeItem('checkmate_settings');
+          location.reload();
+        }
+      }
+    }
+  </script>
+</body>
+</html>

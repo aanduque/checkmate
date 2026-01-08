@@ -44,7 +44,7 @@ export function registerDevToolsMethods(
   const { taskRepository, tagRepository, sprintRepository, routineRepository, storage } = handlers;
 
   // Load demo data
-  server.addMethod('devtools.loadDemoData', async () => {
+  server.register('devtools.loadDemoData', async () => {
     // First clear existing data
     storage.clear();
 
@@ -257,7 +257,7 @@ Drag tasks between columns to schedule them!`,
   });
 
   // Reset all data
-  server.addMethod('devtools.resetAllData', async () => {
+  server.register('devtools.resetAllData', async () => {
     storage.clear();
     return {
       success: true,
@@ -266,7 +266,7 @@ Drag tasks between columns to schedule them!`,
   });
 
   // Export backup
-  server.addMethod('devtools.exportBackup', async () => {
+  server.register('devtools.exportBackup', async () => {
     const [tasks, tags, sprints, routines] = await Promise.all([
       taskRepository.findAll(),
       tagRepository.findAll(),
@@ -285,7 +285,7 @@ Drag tasks between columns to schedule them!`,
   });
 
   // Import backup
-  server.addMethod('devtools.importBackup', async (params: {
+  server.register('devtools.importBackup', async (params: {
     version: number;
     tasks: any[];
     tags: any[];

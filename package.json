@@ -2,12 +2,13 @@
   "name": "checkmate",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:web\"",
     "dev:server": "bun run --filter @checkmate/server dev",
-    "dev:client": "bun run --filter @checkmate/client dev",
+    "dev:web": "bun run --filter @checkmate/web dev",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
     "test:watch": "bun run --filter '*' test:watch",

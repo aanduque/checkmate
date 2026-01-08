@@ -419,8 +419,8 @@ Phase 6 (Client Hooks) ←──────────────────
 - `packages/infrastructure/src/adapters/*`
 
 **Does NOT touch:**
-- `packages/server/*`
-- `packages/client/*`
+- `apps/server/*`
+- `apps/web/*`
 - `packages/shared/*`
 
 #### Stream B: OpenRPC + Server (1 instance)
@@ -431,12 +431,12 @@ Phase 6 (Client Hooks) ←──────────────────
 
 **Owns:**
 - `packages/shared/*` (new)
-- `packages/server/*`
+- `apps/server/*`
 
 **Does NOT touch:**
 - `packages/domain/*`
 - `packages/application/*`
-- `packages/client/*`
+- `apps/web/*`
 
 **Note:** Phase 5 requires handlers from Stream A. Can stub handlers initially or wait for Phase 4 completion.
 
@@ -447,11 +447,11 @@ Phase 6 (Client Hooks) ←──────────────────
 | 6-10 | Routing, hooks, layout, modals, views |
 
 **Owns:**
-- `packages/client/*`
+- `apps/web/*`
 
 **Does NOT touch:**
 - `packages/domain/*`
-- `packages/server/*`
+- `apps/server/*`
 - `packages/shared/*`
 
 **Note:** Can mock RPC calls until Stream B completes.
@@ -462,9 +462,9 @@ These files require coordination if multiple streams need changes:
 
 | File | Primary Owner | Risk |
 |------|---------------|------|
-| `packages/client/src/store/index.ts` | Stream C | High |
+| `apps/web/src/store/index.ts` | Stream C | High |
 | `packages/shared/openrpc.yaml` | Stream B | High |
-| `packages/server/src/index.ts` | Stream B | Medium |
+| `apps/server/src/index.ts` | Stream B | Medium |
 | `package.json` (root) | Any | Low |
 
 ### 11.4 Execution Timeline
@@ -494,21 +494,21 @@ Sprint 4:
 **Stream A prompt:**
 ```
 Focus: packages/domain/*, packages/application/*, packages/infrastructure/adapters/*
-DO NOT touch: packages/server/*, packages/client/*, packages/shared/*
+DO NOT touch: apps/server/*, apps/web/*, packages/shared/*
 Start: Phase 2 - Create IFilterExpressionEvaluator and IRecurrenceCalculator ports
 ```
 
 **Stream B prompt:**
 ```
-Focus: packages/shared/* (new), packages/server/*
-DO NOT touch: packages/domain/*, packages/application/*, packages/client/*
+Focus: packages/shared/* (new), apps/server/*
+DO NOT touch: packages/domain/*, packages/application/*, apps/web/*
 Start: Phase 1 - Create packages/shared with openrpc.yaml schema
 ```
 
 **Stream C prompt:**
 ```
-Focus: packages/client/*
-DO NOT touch: packages/domain/*, packages/server/*, packages/shared/*
+Focus: apps/web/*
+DO NOT touch: packages/domain/*, apps/server/*, packages/shared/*
 Start: Phase 6 - Update App.tsx with Crossroad Route components
 ```
 

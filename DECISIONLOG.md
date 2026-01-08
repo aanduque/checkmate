@@ -670,4 +670,45 @@ Infrastructure Layer:
 
 ---
 
+## DEC-025: Apps vs Packages Monorepo Organization
+
+**Date:** 2025-01-08
+**Status:** Accepted
+**Context:** The monorepo currently places all code in `packages/`, but client and server are deployable applications, not reusable libraries.
+
+**Decision:**
+Separate deployable applications from shared libraries:
+
+```
+checkmate/
+├── apps/
+│   ├── web/              # React frontend (deployable)
+│   └── server/           # JSON-RPC server (deployable)
+├── packages/
+│   ├── domain/           # Pure business logic (library)
+│   ├── application/      # Use cases (library)
+│   ├── infrastructure/   # Adapters (library)
+│   └── shared/           # OpenRPC schema + types (library)
+└── poc/
+    └── index.html
+```
+
+**Options Considered:**
+1. Keep everything in `packages/` — Current state, simpler but semantically incorrect
+2. Separate `apps/` and `packages/` (chosen) — Clear distinction, industry standard
+
+**Rationale:**
+- Semantic clarity: `apps/` = deployable, `packages/` = importable
+- Industry convention (Turborepo, Nx, pnpm workspaces)
+- Future-proofing for additional apps (mobile, admin, CLI)
+- Consistent treatment of both deployable artifacts
+
+**Consequences:**
+- `packages/client` → `apps/web`
+- `packages/server` → `apps/server`
+- Update workspace configuration in root `package.json`
+- Update all documentation references
+
+---
+
 *End of Decision Log*

@@ -29,17 +29,20 @@ Check Mate is an ADHD-friendly task management application being refactored from
 
 ```
 checkmate/
+├── apps/
+│   ├── web/              # React frontend (Vite + React)
+│   └── server/           # JSON-RPC server (@open-rpc/server-js)
 ├── packages/
 │   ├── domain/           # Pure business logic (no dependencies)
 │   ├── application/      # Use cases (commands/queries)
 │   ├── infrastructure/   # Persistence, adapters for external libs
-│   ├── shared/           # OpenRPC schema + generated types
-│   ├── server/           # JSON-RPC server (@open-rpc/server-js)
-│   └── client/           # React frontend
+│   └── shared/           # OpenRPC schema + generated types
 ├── poc/                  # POC reference (read-only)
 │   └── index.html        # Original Alpine.js monolith
 └── PROJECT.md            # Detailed refactoring guide
 ```
+
+See DEC-025 in DECISIONLOG.md for rationale on apps vs packages organization.
 
 ## Architecture
 

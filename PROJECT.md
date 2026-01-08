@@ -26,7 +26,92 @@ Refactor the Check Mate POC (Proof of Concept) in `poc/index.html` into a produc
 checkmate/
 ├── package.json                 # Root workspace config
 ├── bun.lockb
-├── packages/
+├── apps/                        # Deployable applications
+│   ├── web/                     # React Frontend (Vite)
+│   │   ├── package.json
+│   │   ├── vite.config.ts
+│   │   ├── index.html
+│   │   ├── src/
+│   │   │   ├── main.tsx
+│   │   │   ├── App.tsx
+│   │   │   ├── store/
+│   │   │   │   ├── index.ts     # Statux store setup
+│   │   │   │   ├── taskStore.ts
+│   │   │   │   ├── tagStore.ts
+│   │   │   │   ├── sprintStore.ts
+│   │   │   │   ├── routineStore.ts
+│   │   │   │   └── uiStore.ts
+│   │   │   ├── hooks/
+│   │   │   │   ├── useTasks.ts
+│   │   │   │   ├── useKanban.ts
+│   │   │   │   ├── useFocusTask.ts
+│   │   │   │   ├── useStats.ts
+│   │   │   │   ├── useRoutines.ts
+│   │   │   │   └── useRpc.ts    # JSON-RPC client hook
+│   │   │   ├── components/
+│   │   │   │   ├── layout/
+│   │   │   │   │   ├── Dock.tsx
+│   │   │   │   │   ├── Drawer.tsx
+│   │   │   │   │   ├── Header.tsx
+│   │   │   │   │   └── FAB.tsx
+│   │   │   │   ├── views/
+│   │   │   │   │   ├── FocusView.tsx
+│   │   │   │   │   ├── TasksView.tsx
+│   │   │   │   │   └── StatsView.tsx
+│   │   │   │   ├── kanban/
+│   │   │   │   │   ├── KanbanBoard.tsx
+│   │   │   │   │   ├── KanbanColumn.tsx
+│   │   │   │   │   └── TaskCard.tsx
+│   │   │   │   ├── tasks/
+│   │   │   │   │   ├── TaskDetailModal.tsx
+│   │   │   │   │   ├── CreateTaskModal.tsx
+│   │   │   │   │   ├── TagBadge.tsx
+│   │   │   │   │   └── SessionList.tsx
+│   │   │   │   ├── stats/
+│   │   │   │   │   ├── StatsRow.tsx
+│   │   │   │   │   ├── TagPerformance.tsx
+│   │   │   │   │   ├── WeeklyActivity.tsx
+│   │   │   │   │   └── FocusQuality.tsx
+│   │   │   │   ├── modals/
+│   │   │   │   │   ├── SkipForDayModal.tsx
+│   │   │   │   │   ├── CancelTaskModal.tsx
+│   │   │   │   │   ├── CompleteSessionModal.tsx
+│   │   │   │   │   ├── AddManualSessionModal.tsx
+│   │   │   │   │   ├── ImportTasksModal.tsx
+│   │   │   │   │   ├── TagsModal.tsx
+│   │   │   │   │   ├── RoutinesModal.tsx
+│   │   │   │   │   └── SettingsModal.tsx
+│   │   │   │   └── common/
+│   │   │   │       ├── Modal.tsx
+│   │   │   │       ├── Button.tsx
+│   │   │   │       └── Input.tsx
+│   │   │   ├── services/
+│   │   │   │   └── rpcClient.ts  # JSON-RPC client
+│   │   │   └── utils/
+│   │   │       ├── dateUtils.ts
+│   │   │       └── formatters.ts
+│   │   └── tests/
+│   │       ├── components/
+│   │       └── hooks/
+│   │
+│   └── server/                  # JSON-RPC Server (Bun)
+│       ├── package.json
+│       ├── src/
+│       │   ├── index.ts         # Server entry point
+│       │   ├── rpc/
+│       │   │   ├── RpcServer.ts
+│       │   │   ├── methods/
+│       │   │   │   ├── taskMethods.ts
+│       │   │   │   ├── tagMethods.ts
+│       │   │   │   ├── sprintMethods.ts
+│       │   │   │   ├── routineMethods.ts
+│       │   │   │   └── statsMethods.ts
+│       │   │   └── types.ts
+│       │   └── middleware/
+│       │       └── errorHandler.ts
+│       └── tests/
+│
+├── packages/                    # Shared libraries
 │   ├── domain/                  # Domain layer (pure business logic)
 │   │   ├── package.json
 │   │   ├── src/
@@ -46,6 +131,9 @@ checkmate/
 │   │   │   │   └── FocusLevel.ts
 │   │   │   ├── aggregates/
 │   │   │   │   └── TaskAggregate.ts
+│   │   │   ├── ports/
+│   │   │   │   ├── IFilterExpressionEvaluator.ts
+│   │   │   │   └── IRecurrenceCalculator.ts
 │   │   │   ├── repositories/
 │   │   │   │   ├── ITaskRepository.ts
 │   │   │   │   ├── ITagRepository.ts
@@ -89,105 +177,28 @@ checkmate/
 │   │   │       └── QueryHandler.ts
 │   │   └── tests/
 │   │
-│   ├── infrastructure/          # Infrastructure layer
+│   ├── infrastructure/          # Infrastructure layer (adapters)
 │   │   ├── package.json
 │   │   ├── src/
+│   │   │   ├── adapters/
+│   │   │   │   ├── FiltrexExpressionEvaluator.ts  # IFilterExpressionEvaluator
+│   │   │   │   └── RRuleRecurrenceCalculator.ts   # IRecurrenceCalculator
 │   │   │   ├── persistence/
 │   │   │   │   ├── LocalStorageTaskRepository.ts
 │   │   │   │   ├── LocalStorageTagRepository.ts
 │   │   │   │   ├── LocalStorageSprintRepository.ts
 │   │   │   │   └── LocalStorageRoutineRepository.ts
-│   │   │   ├── services/
-│   │   │   │   ├── RecurrenceParser.ts      # Uses rrule
-│   │   │   │   └── FilterExpressionEvaluator.ts  # Uses filtrex
 │   │   │   └── export/
 │   │   │       ├── JsonExporter.ts
 │   │   │       └── JsonImporter.ts
 │   │   └── tests/
 │   │
-│   ├── server/                  # JSON-RPC Server
-│   │   ├── package.json
-│   │   ├── src/
-│   │   │   ├── index.ts         # Server entry point
-│   │   │   ├── rpc/
-│   │   │   │   ├── RpcServer.ts
-│   │   │   │   ├── methods/
-│   │   │   │   │   ├── taskMethods.ts
-│   │   │   │   │   ├── tagMethods.ts
-│   │   │   │   │   ├── sprintMethods.ts
-│   │   │   │   │   ├── routineMethods.ts
-│   │   │   │   │   └── statsMethods.ts
-│   │   │   │   └── types.ts
-│   │   │   └── middleware/
-│   │   │       └── errorHandler.ts
-│   │   └── tests/
-│   │
-│   └── client/                  # React Frontend
+│   └── shared/                  # OpenRPC schema + generated types
 │       ├── package.json
-│       ├── vite.config.ts
-│       ├── index.html
-│       ├── src/
-│       │   ├── main.tsx
-│       │   ├── App.tsx
-│       │   ├── store/
-│       │   │   ├── index.ts     # Statux store setup
-│       │   │   ├── taskStore.ts
-│       │   │   ├── tagStore.ts
-│       │   │   ├── sprintStore.ts
-│       │   │   ├── routineStore.ts
-│       │   │   └── uiStore.ts
-│       │   ├── hooks/
-│       │   │   ├── useTasks.ts
-│       │   │   ├── useKanban.ts
-│       │   │   ├── useFocusTask.ts
-│       │   │   ├── useStats.ts
-│       │   │   ├── useRoutines.ts
-│       │   │   └── useRpc.ts    # JSON-RPC client hook
-│       │   ├── components/
-│       │   │   ├── layout/
-│       │   │   │   ├── Dock.tsx
-│       │   │   │   ├── Drawer.tsx
-│       │   │   │   ├── Header.tsx
-│       │   │   │   └── FAB.tsx
-│       │   │   ├── views/
-│       │   │   │   ├── FocusView.tsx
-│       │   │   │   ├── TasksView.tsx
-│       │   │   │   └── StatsView.tsx
-│       │   │   ├── kanban/
-│       │   │   │   ├── KanbanBoard.tsx
-│       │   │   │   ├── KanbanColumn.tsx
-│       │   │   │   └── TaskCard.tsx
-│       │   │   ├── tasks/
-│       │   │   │   ├── TaskDetailModal.tsx
-│       │   │   │   ├── CreateTaskModal.tsx
-│       │   │   │   ├── TagBadge.tsx
-│       │   │   │   └── SessionList.tsx
-│       │   │   ├── stats/
-│       │   │   │   ├── StatsRow.tsx
-│       │   │   │   ├── TagPerformance.tsx
-│       │   │   │   ├── WeeklyActivity.tsx
-│       │   │   │   └── FocusQuality.tsx
-│       │   │   ├── modals/
-│       │   │   │   ├── SkipForDayModal.tsx
-│       │   │   │   ├── CancelTaskModal.tsx
-│       │   │   │   ├── CompleteSessionModal.tsx
-│       │   │   │   ├── AddManualSessionModal.tsx
-│       │   │   │   ├── ImportTasksModal.tsx
-│       │   │   │   ├── TagsModal.tsx
-│       │   │   │   ├── RoutinesModal.tsx
-│       │   │   │   └── SettingsModal.tsx
-│       │   │   └── common/
-│       │   │       ├── Modal.tsx
-│       │   │       ├── Button.tsx
-│       │   │       └── Input.tsx
-│       │   ├── services/
-│       │   │   └── rpcClient.ts  # JSON-RPC client
-│       │   └── utils/
-│       │       ├── dateUtils.ts
-│       │       └── formatters.ts
-│       └── tests/
-│           ├── components/
-│           └── hooks/
+│       ├── openrpc.yaml         # API schema (source of truth)
+│       ├── openrpc.json         # Generated from YAML
+│       └── generated/
+│           └── types.ts         # Auto-generated TypeScript types
 ```
 
 ## Root package.json
@@ -197,12 +208,13 @@ checkmate/
   "name": "checkmate",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:web\"",
     "dev:server": "bun run --filter @checkmate/server dev",
-    "dev:client": "bun run --filter @checkmate/client dev",
+    "dev:web": "bun run --filter @checkmate/web dev",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
     "test:watch": "bun run --filter '*' test:watch",
@@ -309,7 +321,7 @@ bun test --coverage
 ## Crossroad Router Usage
 
 ```tsx
-// packages/client/src/App.tsx
+// apps/web/src/App.tsx
 import Router, { Switch, Route } from 'crossroad';
 import { Store } from 'statux';
 import { FocusView } from './components/views/FocusView';
@@ -351,7 +363,7 @@ export function App() {
 ## Statux State Management
 
 ```tsx
-// packages/client/src/store/index.ts
+// apps/web/src/store/index.ts
 import { Store } from 'statux';
 
 export const initialState = {
@@ -384,7 +396,7 @@ export const initialState = {
   }
 };
 
-// packages/client/src/hooks/useTasks.ts
+// apps/web/src/hooks/useTasks.ts
 import { useStore } from 'statux';
 
 export function useTasks() {
@@ -410,7 +422,7 @@ export function useTasks() {
   return { tasks, addTask, updateTask, completeTask };
 }
 
-// packages/client/src/components/tasks/TaskCard.tsx
+// apps/web/src/components/tasks/TaskCard.tsx
 import { useStore } from 'statux';
 
 export function TaskCard({ task }) {
@@ -438,7 +450,7 @@ export function TaskCard({ task }) {
 ## JSON-RPC Server
 
 ```typescript
-// packages/server/src/rpc/RpcServer.ts
+// apps/server/src/rpc/RpcServer.ts
 import { serve } from 'bun';
 
 interface RpcRequest {
@@ -504,7 +516,7 @@ export class RpcServer {
   }
 }
 
-// packages/server/src/rpc/methods/taskMethods.ts
+// apps/server/src/rpc/methods/taskMethods.ts
 export function registerTaskMethods(server: RpcServer, taskService: TaskService) {
   server.register('task.create', async (params) => {
     return taskService.createTask(params as CreateTaskParams);

@@ -248,15 +248,6 @@ data.import - Full JSON import
 
 ---
 
-## Questions for Clarification
-
-1. Should the JSON export include completed/canceled tasks from all time, or just active tasks?
-2. For routine activation, should we check every minute or only on view change?
-3. Should manual sessions be limited to past dates only, or allow future scheduling?
-4. Priority of features: Should we focus on backend-first (TDD) or parallel frontend work?
-
----
-
 ## Approval Checklist
 
 - [ ] Phase 1: Domain Layer (TDD)
@@ -264,3 +255,5 @@ data.import - Full JSON import
 - [ ] Phase 3: Application Layer (TDD)
 - [ ] Phase 4: Server RPC Methods
 - [ ] Phase 5: Client Implementation
+
+Note: All behavior matches the reference POC (index.html) exactly.

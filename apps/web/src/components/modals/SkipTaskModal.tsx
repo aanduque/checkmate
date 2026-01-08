@@ -107,15 +107,16 @@ export function SkipTaskModal({
           </button>
           <button
             type="submit"
-            className="btn btn-warning"
+            className="btn btn-warning gap-2"
             disabled={loading || (isSkipForDay && !justification.trim())}
           >
             {loading ? (
               <span className="loading loading-spinner loading-sm" />
-            ) : isSkipForDay ? (
-              'Skip for Today'
             ) : (
-              'Skip for Now'
+              <>
+                <ion-icon name={isSkipForDay ? 'calendar-outline' : 'play-skip-forward-outline'}></ion-icon>
+                {isSkipForDay ? 'Skip for Today' : 'Skip for Now'}
+              </>
             )}
           </button>
         </div>

@@ -78,10 +78,17 @@ export function CancelTaskModal({ isOpen, onClose, onCanceled, taskId, taskTitle
           </button>
           <button
             type="submit"
-            className="btn btn-error"
+            className="btn btn-error gap-2"
             disabled={loading || !justification.trim()}
           >
-            {loading ? <span className="loading loading-spinner loading-sm" /> : 'Cancel Task'}
+            {loading ? (
+              <span className="loading loading-spinner loading-sm" />
+            ) : (
+              <>
+                <ion-icon name="close-circle-outline"></ion-icon>
+                Cancel Task
+              </>
+            )}
           </button>
         </div>
       </form>

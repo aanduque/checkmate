@@ -139,8 +139,9 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, sprintId }: Create
                         type="button"
                         className="btn btn-xs btn-ghost text-error"
                         onClick={() => handleTagPointsChange(tag.name.toLowerCase(), 0)}
+                        aria-label="Remove tag"
                       >
-                        ✕
+                        <ion-icon name="close-outline"></ion-icon>
                       </button>
                     )}
                   </div>
@@ -160,10 +161,17 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, sprintId }: Create
             </button>
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary gap-2"
               disabled={loading || !title.trim()}
             >
-              {loading ? <span className="loading loading-spinner loading-sm" /> : 'Create'}
+              {loading ? (
+                <span className="loading loading-spinner loading-sm" />
+              ) : (
+                <>
+                  <ion-icon name="add-outline"></ion-icon>
+                  Create
+                </>
+              )}
             </button>
           </div>
         </div>

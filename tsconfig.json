@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@checkmate/domain": ["packages/domain/src"],
+      "@checkmate/application": ["packages/application/src"],
+      "@checkmate/infrastructure": ["packages/infrastructure/src"],
+      "@checkmate/server": ["packages/server/src"],
+      "@checkmate/client": ["packages/client/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

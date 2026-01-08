@@ -14,7 +14,9 @@
   "dependencies": {
     "@checkmate/domain": "workspace:*",
     "@checkmate/application": "workspace:*",
-    "@checkmate/infrastructure": "workspace:*"
+    "@checkmate/infrastructure": "workspace:*",
+    "@checkmate/shared": "workspace:*",
+    "hono": "^4.4.0"
   },
   "devDependencies": {
     "vitest": "^2.0.0",

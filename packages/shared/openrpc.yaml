@@ -1,0 +1,727 @@
+openrpc: 1.3.2
+info:
+  title: Check Mate API
+  description: JSON-RPC API for Check Mate - ADHD-friendly task management
+  version: 0.1.0
+  license:
+    name: MIT
+
+servers:
+  - name: Local Development
+    url: http://localhost:3001
+
+methods:
+  # ============================================================================
+  # TASK METHODS
+  # ============================================================================
+
+  - name: task.create
+    summary: Create a new task
+    description: Creates a new task with required title and tag points
+    params:
+      - name: title
+        description: Task title (cannot be empty)
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: description
+        description: Optional task description
+        required: false
+        schema:
+          type: string
+      - name: tagPoints
+        description: Points allocation per tag (Fibonacci scale)
+        required: true
+        schema:
+          $ref: "#/components/schemas/TagPoints"
+      - name: sprintId
+        description: Optional sprint ID to place task directly in sprint
+        required: false
+        schema:
+          type: string
+    result:
+      name: task
+      description: The created task
+      schema:
+        $ref: "#/components/schemas/Task"
+    errors:
+      - code: -32000
+        message: Task title cannot be empty
+      - code: -32000
+        message: Task must have at least one tag with points
+
+  - name: task.complete
+    summary: Complete a task
+    description: Marks a task as completed
+    params:
+      - name: id
+        description: Task ID
+        required: true
+        schema:
+          type: string
+    result:
+      name: task
+      description: The completed task
+      schema:
+        $ref: "#/components/schemas/Task"
+    errors:
+      - code: -32000
+        message: Task not found
+
+  - name: task.cancel
+    summary: Cancel a task
+    description: Cancels a task with required justification
+    params:
+      - name: id
+        description: Task ID
+        required: true
+        schema:
+          type: string
+      - name: justification
+        description: Reason for cancellation (required)
+        required: true
+        schema:
+          type: string
+          minLength: 1
+    result:
+      name: task
+      description: The canceled task
+      schema:
+        $ref: "#/components/schemas/Task"
+    errors:
+      - code: -32000
+        message: Task not found
+      - code: -32000
+        message: Justification is required
+
+  - name: task.skip
+    summary: Skip a task
+    description: Skips a task for now or for the day
+    params:
+      - name: id
+        description: Task ID
+        required: true
+        schema:
+          type: string
+      - name: type
+        description: Skip type - 'for_now' moves to bottom, 'for_day' hides until tomorrow
+        required: true
+        schema:
+          $ref: "#/components/schemas/SkipType"
+      - name: justification
+        description: Reason for skipping (required for 'for_day')
+        required: true
+        schema:
+          type: string
+    result:
+      name: task
+      description: The skipped task
+      schema:
+        $ref: "#/components/schemas/Task"
+    errors:
+      - code: -32000
+        message: Task not found
+
+  - name: task.getKanban
+    summary: Get Kanban board data
+    description: Returns tasks organized for Kanban display (backlog and sprints)
+    params:
+      - name: sprintId
+        description: Optional sprint ID to filter by
+        required: false
+        schema:
+          type: string
+    result:
+      name: kanban
+      description: Kanban board data
+      schema:
+        $ref: "#/components/schemas/KanbanBoard"
+
+  - name: task.getFocus
+    summary: Get focus task
+    description: Returns the current focus task and up-next queue
+    params:
+      - name: sprintId
+        description: Optional sprint ID to filter by
+        required: false
+        schema:
+          type: string
+    result:
+      name: focus
+      description: Focus task data
+      schema:
+        $ref: "#/components/schemas/FocusData"
+
+  # ============================================================================
+  # SESSION METHODS
+  # ============================================================================
+
+  - name: session.start
+    summary: Start a focus session
+    description: Starts a new focus session on a task
+    params:
+      - name: taskId
+        description: Task ID to start session on
+        required: true
+        schema:
+          type: string
+      - name: durationMinutes
+        description: Planned session duration in minutes (default 25)
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 25
+    result:
+      name: session
+      description: The started session
+      schema:
+        $ref: "#/components/schemas/Session"
+    errors:
+      - code: -32000
+        message: Task not found
+      - code: -32000
+        message: Another session is already active
+
+  - name: session.end
+    summary: End a focus session
+    description: Ends an active focus session with focus level rating
+    params:
+      - name: taskId
+        description: Task ID the session belongs to
+        required: true
+        schema:
+          type: string
+      - name: sessionId
+        description: Session ID to end
+        required: true
+        schema:
+          type: string
+      - name: focusLevel
+        description: Self-reported focus quality
+        required: true
+        schema:
+          $ref: "#/components/schemas/FocusLevel"
+    result:
+      name: session
+      description: The ended session
+      schema:
+        $ref: "#/components/schemas/Session"
+    errors:
+      - code: -32000
+        message: Task not found
+      - code: -32000
+        message: Session not found
+
+  # ============================================================================
+  # TAG METHODS
+  # ============================================================================
+
+  - name: tag.create
+    summary: Create a new tag
+    description: Creates a new tag for categorizing tasks
+    params:
+      - name: name
+        description: Tag name (unique)
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: icon
+        description: Icon identifier (Ionicons name)
+        required: false
+        schema:
+          type: string
+      - name: color
+        description: Color hex code (e.g., #FF5733)
+        required: false
+        schema:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+      - name: defaultCapacity
+        description: Default weekly capacity points for this tag
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+    result:
+      name: tag
+      description: The created tag
+      schema:
+        $ref: "#/components/schemas/Tag"
+    errors:
+      - code: -32000
+        message: Tag name cannot be empty
+      - code: -32000
+        message: Tag name already exists
+
+  - name: tag.getAll
+    summary: Get all tags
+    description: Returns all available tags
+    params: []
+    result:
+      name: tags
+      description: List of all tags
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/Tag"
+
+  # ============================================================================
+  # SPRINT METHODS
+  # ============================================================================
+
+  - name: sprint.create
+    summary: Create a new sprint
+    description: Creates a new sprint starting on the given date
+    params:
+      - name: startDate
+        description: Sprint start date (ISO 8601 format, must be a Sunday)
+        required: true
+        schema:
+          type: string
+          format: date
+    result:
+      name: sprint
+      description: The created sprint
+      schema:
+        $ref: "#/components/schemas/Sprint"
+    errors:
+      - code: -32000
+        message: Invalid start date
+
+  - name: sprint.getCurrent
+    summary: Get current sprint
+    description: Returns the currently active sprint based on today's date
+    params: []
+    result:
+      name: sprint
+      description: Current sprint or null if none
+      schema:
+        oneOf:
+          - $ref: "#/components/schemas/Sprint"
+          - type: "null"
+
+  - name: sprint.getUpcoming
+    summary: Get upcoming sprints
+    description: Returns upcoming sprints (including current)
+    params:
+      - name: limit
+        description: Maximum number of sprints to return (default 3)
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 3
+    result:
+      name: sprints
+      description: List of upcoming sprints
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/Sprint"
+
+  # ============================================================================
+  # STATS METHODS
+  # ============================================================================
+
+  - name: stats.getDaily
+    summary: Get daily statistics
+    description: Returns task and session statistics for a specific day
+    params:
+      - name: date
+        description: Date to get stats for (ISO 8601, defaults to today)
+        required: false
+        schema:
+          type: string
+          format: date
+    result:
+      name: stats
+      description: Daily statistics
+      schema:
+        $ref: "#/components/schemas/DailyStats"
+
+  - name: stats.getWeekly
+    summary: Get weekly statistics
+    description: Returns task and session statistics for a week
+    params:
+      - name: date
+        description: Any date within the week (ISO 8601, defaults to current week)
+        required: false
+        schema:
+          type: string
+          format: date
+    result:
+      name: stats
+      description: Weekly statistics
+      schema:
+        $ref: "#/components/schemas/WeeklyStats"
+
+# ==============================================================================
+# COMPONENTS
+# ==============================================================================
+
+components:
+  schemas:
+    # --------------------------------------------------------------------------
+    # Core Entities
+    # --------------------------------------------------------------------------
+
+    Task:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - tagPoints
+        - location
+        - sessions
+        - comments
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique task identifier
+        title:
+          type: string
+          description: Task title
+        description:
+          type: string
+          description: Optional task description
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        tagPoints:
+          $ref: "#/components/schemas/TagPoints"
+        location:
+          $ref: "#/components/schemas/TaskLocation"
+        skipState:
+          $ref: "#/components/schemas/SkipState"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        parentId:
+          type: string
+          description: Parent task ID (for recurring instances or split tasks)
+        recurrence:
+          type: string
+          description: RRule string for recurring tasks
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          description: When the task was completed
+
+    Tag:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique tag identifier
+        name:
+          type: string
+          description: Tag display name
+        icon:
+          type: string
+          description: Icon identifier (Ionicons name)
+        color:
+          type: string
+          description: Color hex code
+        defaultCapacity:
+          type: integer
+          description: Default weekly capacity points
+
+    Sprint:
+      type: object
+      required:
+        - id
+        - startDate
+        - endDate
+      properties:
+        id:
+          type: string
+          description: Unique sprint identifier
+        startDate:
+          type: string
+          format: date
+          description: Sprint start date (Sunday)
+        endDate:
+          type: string
+          format: date
+          description: Sprint end date (Saturday)
+        capacityOverrides:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Per-tag capacity overrides
+
+    Session:
+      type: object
+      required:
+        - id
+        - startedAt
+        - status
+      properties:
+        id:
+          type: string
+          description: Unique session identifier
+        startedAt:
+          type: string
+          format: date-time
+          description: When the session started
+        endedAt:
+          type: string
+          format: date-time
+          description: When the session ended
+        durationMinutes:
+          type: integer
+          description: Planned duration in minutes
+        actualDurationMinutes:
+          type: integer
+          description: Actual duration in minutes
+        status:
+          $ref: "#/components/schemas/SessionStatus"
+        focusLevel:
+          $ref: "#/components/schemas/FocusLevel"
+        notes:
+          type: string
+          description: Optional session notes
+
+    Comment:
+      type: object
+      required:
+        - id
+        - content
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Unique comment identifier
+        content:
+          type: string
+          description: Comment text (Markdown supported)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        skipJustification:
+          type: boolean
+          description: Whether this comment is a skip justification
+        cancelJustification:
+          type: boolean
+          description: Whether this comment is a cancel justification
+
+    # --------------------------------------------------------------------------
+    # Value Objects
+    # --------------------------------------------------------------------------
+
+    TaskStatus:
+      type: string
+      enum:
+        - active
+        - completed
+        - canceled
+      description: Task lifecycle status
+
+    SessionStatus:
+      type: string
+      enum:
+        - in_progress
+        - completed
+        - abandoned
+      description: Session lifecycle status
+
+    FocusLevel:
+      type: string
+      enum:
+        - distracted
+        - neutral
+        - focused
+      description: Self-reported focus quality
+
+    SkipType:
+      type: string
+      enum:
+        - for_now
+        - for_day
+      description: Type of skip action
+
+    TagPoints:
+      type: object
+      additionalProperties:
+        type: integer
+        enum: [1, 2, 3, 5, 8, 13, 21]
+      description: Points allocation per tag ID (Fibonacci scale)
+
+    TaskLocation:
+      oneOf:
+        - type: object
+          required:
+            - type
+          properties:
+            type:
+              type: string
+              enum: [backlog]
+        - type: object
+          required:
+            - type
+            - sprintId
+          properties:
+            type:
+              type: string
+              enum: [sprint]
+            sprintId:
+              type: string
+      description: Where the task is located
+
+    SkipState:
+      type: object
+      required:
+        - type
+        - skippedAt
+      properties:
+        type:
+          $ref: "#/components/schemas/SkipType"
+        skippedAt:
+          type: string
+          format: date-time
+        returnAt:
+          type: string
+          format: date-time
+          description: When the task should return (for skip_for_day)
+        justificationCommentId:
+          type: string
+          description: ID of the justification comment
+      description: Skip state for temporarily deprioritized tasks
+
+    # --------------------------------------------------------------------------
+    # Response Objects
+    # --------------------------------------------------------------------------
+
+    KanbanBoard:
+      type: object
+      required:
+        - backlog
+        - sprints
+      properties:
+        backlog:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+          description: Tasks in backlog
+        sprints:
+          type: array
+          items:
+            type: object
+            required:
+              - sprint
+              - tasks
+            properties:
+              sprint:
+                $ref: "#/components/schemas/Sprint"
+              tasks:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+          description: Sprint columns with tasks
+
+    FocusData:
+      type: object
+      properties:
+        focusTask:
+          oneOf:
+            - $ref: "#/components/schemas/Task"
+            - type: "null"
+          description: Current task to focus on
+        upNext:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+          description: Upcoming tasks queue
+        activeSession:
+          oneOf:
+            - $ref: "#/components/schemas/Session"
+            - type: "null"
+          description: Currently active session if any
+
+    DailyStats:
+      type: object
+      required:
+        - date
+        - tasksCompleted
+        - totalPoints
+        - totalFocusMinutes
+        - sessionCount
+      properties:
+        date:
+          type: string
+          format: date
+        tasksCompleted:
+          type: integer
+        totalPoints:
+          type: integer
+        totalFocusMinutes:
+          type: integer
+        sessionCount:
+          type: integer
+        averageFocusLevel:
+          type: number
+          description: Average focus level (0-1 scale)
+        pointsByTag:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Points completed by tag
+
+    WeeklyStats:
+      type: object
+      required:
+        - weekStart
+        - weekEnd
+        - tasksCompleted
+        - totalPoints
+        - totalFocusMinutes
+        - sessionCount
+        - dailyBreakdown
+      properties:
+        weekStart:
+          type: string
+          format: date
+        weekEnd:
+          type: string
+          format: date
+        tasksCompleted:
+          type: integer
+        totalPoints:
+          type: integer
+        totalFocusMinutes:
+          type: integer
+        sessionCount:
+          type: integer
+        averageFocusLevel:
+          type: number
+        pointsByTag:
+          type: object
+          additionalProperties:
+            type: integer
+        dailyBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyStats"
+          description: Per-day statistics

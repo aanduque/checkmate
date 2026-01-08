@@ -29,9 +29,19 @@ export const mockTags: TagDTO[] = [
   { id: 'untagged', name: 'Untagged', icon: '📌', color: '#6b7280', defaultCapacity: 5 }
 ];
 
+// Extended Sprint with capacity overrides
+export interface ExtendedSprintDTO extends SprintDTO {
+  capacityOverrides?: Record<string, number>; // tagId -> capacity
+}
+
 // Mock Sprints (rolling 3-sprint window)
-export const mockSprints: SprintDTO[] = [
-  { id: 'sprint-0', startDate: getSprintStart(0), endDate: getSprintEnd(0) },
+export const mockSprints: ExtendedSprintDTO[] = [
+  {
+    id: 'sprint-0',
+    startDate: getSprintStart(0),
+    endDate: getSprintEnd(0),
+    capacityOverrides: { 'tag-work': 25 } // Override work capacity this week
+  },
   { id: 'sprint-1', startDate: getSprintStart(1), endDate: getSprintEnd(1) },
   { id: 'sprint-2', startDate: getSprintStart(2), endDate: getSprintEnd(2) }
 ];

@@ -9,30 +9,10 @@ interface EndSessionModalProps {
   taskId: string;
   sessionId: string;
   taskTitle: string;
+  onCompleteTask?: () => void;
 }
 
 type FocusLevel = 'distracted' | 'neutral' | 'focused';
-
-const focusOptions: { value: FocusLevel; label: string; icon: string; description: string }[] = [
-  {
-    value: 'distracted',
-    label: 'Distracted',
-    icon: '😵',
-    description: 'Hard to concentrate, lots of interruptions'
-  },
-  {
-    value: 'neutral',
-    label: 'Neutral',
-    icon: '😐',
-    description: 'Some focus, some distractions'
-  },
-  {
-    value: 'focused',
-    label: 'Focused',
-    icon: '🎯',
-    description: 'In the zone, deep work achieved'
-  }
-];
 
 export function EndSessionModal({
   isOpen,
@@ -40,23 +20,31 @@ export function EndSessionModal({
   onEnded,
   taskId,
   sessionId,
-  taskTitle
+  taskTitle,
+  onCompleteTask
 }: EndSessionModalProps) {
-  const [focusLevel, setFocusLevel] = useState<FocusLevel | null>(null);
+  const [focusLevel, setFocusLevel] = useState<FocusLevel>('neutral');
+  const [sessionNote, setSessionNote] = useState('');
+  const [markTaskComplete, setMarkTaskComplete] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!focusLevel) {
-      setError('Please select your focus level');
-      return;
-    }
-
     try {
       setLoading(true);
       await sessionApi.end(taskId, sessionId, focusLevel);
+
+      if (markTaskComplete && onCompleteTask) {
+        onCompleteTask();
+      }
+
       onEnded();
       onClose();
+
+      // Reset form
+      setFocusLevel('neutral');
+      setSessionNote('');
+      setMarkTaskComplete(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to end session');
     } finally {
@@ -65,53 +53,103 @@ export function EndSessionModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="End Focus Session">
+    <Modal isOpen={isOpen} onClose={onClose} title="Complete Session">
       {error && (
         <div className="alert alert-error mb-4">
           <span>{error}</span>
         </div>
       )}
 
-      <p className="mb-4">
-        Great work on <strong>{taskTitle}</strong>! How was your focus?
-      </p>
-
-      <div className="space-y-2 mb-6">
-        {focusOptions.map((option) => (
+      {/* Focus Level Selection */}
+      <div className="mb-4">
+        <label className="label">
+          <span className="label-text">How focused were you?</span>
+        </label>
+        <div className="flex gap-2">
           <button
-            key={option.value}
             type="button"
-            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-              focusLevel === option.value
-                ? 'border-primary bg-primary/10'
-                : 'border-base-300 hover:border-base-content/30'
+            onClick={() => setFocusLevel('distracted')}
+            className={`btn btn-sm flex-1 ${
+              focusLevel === 'distracted'
+                ? 'btn-error'
+                : 'btn-ghost bg-error/10 text-error'
             }`}
-            onClick={() => setFocusLevel(option.value)}
           >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{option.icon}</span>
-              <div>
-                <div className="font-semibold">{option.label}</div>
-                <div className="text-sm text-base-content/70">{option.description}</div>
-              </div>
-            </div>
+            <ion-icon name="sad-outline"></ion-icon> Distracted
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => setFocusLevel('neutral')}
+            className={`btn btn-sm flex-1 ${
+              focusLevel === 'neutral'
+                ? 'btn-warning'
+                : 'btn-ghost bg-warning/10 text-warning'
+            }`}
+          >
+            <ion-icon name="ellipse-outline"></ion-icon> Neutral
+          </button>
+          <button
+            type="button"
+            onClick={() => setFocusLevel('focused')}
+            className={`btn btn-sm flex-1 ${
+              focusLevel === 'focused'
+                ? 'btn-success'
+                : 'btn-ghost bg-success/10 text-success'
+            }`}
+          >
+            <ion-icon name="radio-button-on-outline"></ion-icon> Focused
+          </button>
+        </div>
       </div>
 
-      <div className="flex justify-end gap-2">
+      {/* Session Note */}
+      <div className="form-control mb-4">
+        <label className="label">
+          <span className="label-text">Session Note (optional)</span>
+        </label>
+        <textarea
+          value={sessionNote}
+          onChange={(e) => setSessionNote(e.target.value)}
+          rows={2}
+          className="textarea textarea-bordered"
+          placeholder="What did you accomplish?"
+        />
+      </div>
+
+      {/* Mark Task Complete Checkbox */}
+      <div className="form-control mb-4">
+        <label className="label cursor-pointer justify-start gap-2">
+          <input
+            type="checkbox"
+            checked={markTaskComplete}
+            onChange={(e) => setMarkTaskComplete(e.target.checked)}
+            className="checkbox checkbox-sm"
+          />
+          <span className="label-text">Also mark task as complete</span>
+        </label>
+      </div>
+
+      {/* Actions */}
+      <div className="modal-action">
         <button type="button" className="btn btn-ghost" onClick={onClose}>
           Cancel
         </button>
         <button
           type="button"
-          className="btn btn-primary"
-          disabled={loading || !focusLevel}
+          className="btn btn-success"
+          disabled={loading}
           onClick={handleSubmit}
         >
-          {loading ? <span className="loading loading-spinner loading-sm" /> : 'End Session'}
+          {loading ? (
+            <span className="loading loading-spinner loading-sm" />
+          ) : (
+            'Complete Session'
+          )}
         </button>
       </div>
     </Modal>
   );
 }
+
+// Also export as CompleteSessionModal for clarity
+export { EndSessionModal as CompleteSessionModal };

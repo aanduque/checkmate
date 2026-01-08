@@ -1,56 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { taskApi, TaskDTO } from '../../services/rpcClient';
+import React, { useState, useCallback } from 'react';
+import { useKanban } from '../../hooks/useKanban';
+import { useFocusTask } from '../../hooks/useFocusTask';
 import { KanbanBoard } from '../kanban/KanbanBoard';
 import { CancelTaskModal } from '../modals/CancelTaskModal';
+import { TaskDetailModal } from '../modals/TaskDetailModal';
+import type { TaskDTO } from '../../services/rpcClient';
+import type { ExtendedTaskDTO } from '../../mocks/mockData';
 
 export function TasksView() {
-  const [backlog, setBacklog] = useState<TaskDTO[]>([]);
-  const [sprint, setSprint] = useState<TaskDTO[]>([]);
-  const [completed, setCompleted] = useState<TaskDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { kanbanData, loading, error, moveTask, loadKanban } = useKanban();
+  const { startSession } = useFocusTask();
 
   // Cancel modal state
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [taskToCancel, setTaskToCancel] = useState<TaskDTO | null>(null);
 
-  useEffect(() => {
-    loadKanban();
+  // Task detail modal state
+  const [taskDetailOpen, setTaskDetailOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<ExtendedTaskDTO | null>(null);
+
+  const handleMoveTask = useCallback((taskId: string, targetColumn: string) => {
+    moveTask(taskId, targetColumn);
+  }, [moveTask]);
+
+  const handleOpenTaskDetail = useCallback((task: ExtendedTaskDTO) => {
+    setSelectedTask(task);
+    setTaskDetailOpen(true);
   }, []);
 
-  const loadKanban = async () => {
-    try {
-      setLoading(true);
-      const data = await taskApi.getKanban();
-      setBacklog(data.backlog);
-      setSprint(data.sprint);
-      setCompleted(data.completed);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleCompleteTask = useCallback((_taskId: string) => {
+    // TODO: Call RPC to complete task
+    loadKanban();
+  }, [loadKanban]);
 
-  const handleTaskAction = async (taskId: string, action: 'complete' | 'cancel') => {
-    if (action === 'cancel') {
-      // Find the task to show in modal
-      const task = [...backlog, ...sprint, ...completed].find(t => t.id === taskId);
-      if (task) {
-        setTaskToCancel(task);
-        setCancelModalOpen(true);
-      }
-      return;
-    }
+  const handleCancelTask = useCallback((task: TaskDTO) => {
+    setTaskToCancel(task);
+    setCancelModalOpen(true);
+  }, []);
 
-    try {
-      await taskApi.complete(taskId);
-      loadKanban();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
-    }
-  };
+  const handleStartSession = useCallback((taskId: string) => {
+    startSession(taskId);
+  }, [startSession]);
 
   if (loading) {
     return (
@@ -74,13 +64,14 @@ export function TasksView() {
   }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Tasks</h1>
+    <div className="p-4 pb-24">
       <KanbanBoard
-        backlog={backlog}
-        sprint={sprint}
-        completed={completed}
-        onTaskAction={handleTaskAction}
+        kanbanData={kanbanData}
+        onMoveTask={handleMoveTask}
+        onOpenTaskDetail={handleOpenTaskDetail}
+        onCompleteTask={handleCompleteTask}
+        onCancelTask={handleCancelTask}
+        onStartSession={handleStartSession}
       />
 
       {/* Cancel Modal */}
@@ -99,6 +90,18 @@ export function TasksView() {
           taskTitle={taskToCancel.title}
         />
       )}
+
+      {/* Task Detail Modal */}
+      <TaskDetailModal
+        isOpen={taskDetailOpen}
+        onClose={() => {
+          setTaskDetailOpen(false);
+          setSelectedTask(null);
+        }}
+        task={selectedTask}
+        onUpdated={loadKanban}
+        onStartSession={handleStartSession}
+      />
     </div>
   );
 }

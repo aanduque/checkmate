@@ -1,196 +1,173 @@
-import React, { useState, useEffect } from 'react';
-import { taskApi, sessionApi, FocusTaskDTO } from '../../services/rpcClient';
-import { SessionTimer } from '../focus/SessionTimer';
+import React, { useState } from 'react';
+import { useStore, useSelector } from 'statux';
+import { useFocusTask } from '../../hooks/useFocusTask';
 import { SkipTaskModal } from '../modals/SkipTaskModal';
 import { EndSessionModal } from '../modals/EndSessionModal';
+import { TaskDetailModal } from '../modals/TaskDetailModal';
+import type { TagDTO } from '../../services/rpcClient';
+import type { AppState } from '../../store';
 
 export function FocusView() {
-  const [focusTask, setFocusTask] = useState<FocusTaskDTO | null>(null);
-  const [upNext, setUpNext] = useState<FocusTaskDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { focusTask, upNext, startSession, completeCurrentTask, skipCurrentTask, getTagById } = useFocusTask();
+  const tags = useSelector<TagDTO[]>('tags');
+  const activeSession = useSelector<AppState['ui']['activeSession']>('ui.activeSession');
+  const [ui, setUi] = useStore<AppState['ui']>('ui');
 
   // Modal states
   const [skipModalOpen, setSkipModalOpen] = useState(false);
   const [skipType, setSkipType] = useState<'for_now' | 'for_day'>('for_now');
   const [endSessionModalOpen, setEndSessionModalOpen] = useState(false);
-
-  useEffect(() => {
-    loadFocusData();
-  }, []);
-
-  const loadFocusData = async () => {
-    try {
-      setLoading(true);
-      // For now, use a placeholder sprint ID
-      const data = await taskApi.getFocus('current');
-      setFocusTask(data.focusTask);
-      setUpNext(data.upNext);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [taskDetailOpen, setTaskDetailOpen] = useState(false);
 
   const handleStartSession = async () => {
     if (!focusTask) return;
-    try {
-      await sessionApi.start(focusTask.id, 25);
-      loadFocusData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start session');
-    }
+    await startSession(focusTask.id, 25);
   };
 
   const handleSkipClick = (type: 'for_now' | 'for_day') => {
     setSkipType(type);
-    setSkipModalOpen(true);
+    if (type === 'for_now') {
+      // Skip for now doesn't need justification
+      skipCurrentTask('for_now');
+    } else {
+      setSkipModalOpen(true);
+    }
   };
 
   const handleComplete = async () => {
     if (!focusTask) return;
-    try {
-      await taskApi.complete(focusTask.id);
-      loadFocusData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to complete');
-    }
+    await completeCurrentTask();
   };
 
-  const handleEndSessionClick = () => {
-    setEndSessionModalOpen(true);
+  const handleOpenCreateTask = () => {
+    setUi(prev => ({
+      ...prev,
+      modals: { ...prev.modals, createTask: true }
+    }));
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
-    );
-  }
+  const getTaskPrimaryTag = (task: { tagPoints: Record<string, number> }): TagDTO | undefined => {
+    const tagIds = Object.keys(task.tagPoints);
+    if (tagIds.length === 0) return undefined;
+    return tags.find(t => t.id === tagIds[0]);
+  };
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
-        <div className="alert alert-warning">
-          <span>{error}</span>
-        </div>
-        <button className="btn btn-primary mt-4" onClick={loadFocusData}>
-          Retry
-        </button>
-      </div>
-    );
-  }
+  // Show task details modal
+  const handleOpenTaskDetail = () => {
+    setTaskDetailOpen(true);
+  };
 
   if (!focusTask) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
-        <div className="text-6xl mb-4">🎉</div>
-        <h2 className="text-2xl font-bold text-center">All done!</h2>
-        <p className="text-center text-base-content/70 mt-2">
-          No tasks in the current sprint. Add some tasks to get started.
-        </p>
+      <div className="p-4 pb-24 max-w-2xl mx-auto">
+        <div className="hero bg-base-100 rounded-box shadow-sm py-12">
+          <div className="hero-content text-center">
+            <div className="max-w-md">
+              <ion-icon name="checkmark-circle-outline" class="text-6xl text-success mb-4"></ion-icon>
+              <h1 className="text-2xl font-bold mb-2">All Clear!</h1>
+              <p className="opacity-70 mb-4">No tasks in your current sprint. Add some tasks to get started.</p>
+              <button onClick={handleOpenCreateTask} className="btn btn-primary gap-2">
+                <ion-icon name="add-outline"></ion-icon> Add Task
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const hasActiveSession = focusTask.activeSession;
+  const hasActiveSession = !!activeSession;
 
   return (
-    <div className="p-4">
-      {/* Active Session Timer */}
-      {hasActiveSession ? (
-        <SessionTimer
-          startedAt={focusTask.activeSession!.startedAt}
-          durationMinutes={focusTask.activeSession!.durationMinutes}
-          onEnd={handleEndSessionClick}
-        />
-      ) : (
-        /* Current Focus Task */
-        <div className="card bg-base-200 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title text-2xl">{focusTask.title}</h2>
-
-            <div className="flex gap-2 flex-wrap mt-2">
-              {Object.entries(focusTask.tagPoints).map(([tag, points]) => (
-                <span key={tag} className="badge badge-primary">
-                  {tag}: {points}
-                </span>
-              ))}
+    <div className="p-4 pb-24 max-w-2xl mx-auto space-y-4">
+      {/* Hero: Focus on ONE task */}
+      <div className="hero bg-base-100 rounded-box shadow-sm py-8">
+        <div className="hero-content text-center flex-col">
+          <div className="max-w-md">
+            <p className="text-sm opacity-60 mb-2">Focus on this now</p>
+            <h1 className="text-2xl font-bold mb-4">{focusTask.title}</h1>
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              {Object.entries(focusTask.tagPoints).map(([tagId, points]) => {
+                const tag = getTagById(tagId);
+                if (!tag) return null;
+                return (
+                  <span
+                    key={tagId}
+                    className="badge badge-lg"
+                    style={{
+                      backgroundColor: `${tag.color}20`,
+                      color: tag.color
+                    }}
+                  >
+                    <span className="mr-1">{tag.icon}</span>
+                    <span>{tag.name}</span>
+                  </span>
+                );
+              })}
             </div>
-
-            <div className="text-lg font-semibold mt-2">
-              {focusTask.totalPoints} points
-            </div>
-
-            {/* Actions */}
-            <div className="card-actions justify-center mt-4">
+            <div className="flex justify-center gap-2">
               <button
-                className="btn btn-primary btn-lg"
                 onClick={handleStartSession}
+                disabled={hasActiveSession}
+                className="btn btn-primary btn-lg gap-2"
               >
-                Start Session
-              </button>
-            </div>
-
-            <div className="flex justify-center gap-4 mt-4">
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => handleSkipClick('for_now')}
-              >
-                Skip for now
+                <ion-icon name="play-outline"></ion-icon> Start Focus
               </button>
               <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => handleSkipClick('for_day')}
-              >
-                Skip for day
-              </button>
-              <button
-                className="btn btn-success btn-sm"
                 onClick={handleComplete}
+                className="btn btn-success btn-lg gap-2"
               >
-                Complete
+                <ion-icon name="checkmark-outline"></ion-icon> Done
               </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Task Title During Session */}
-      {hasActiveSession && (
-        <div className="mt-4 text-center">
-          <h3 className="text-lg font-semibold">{focusTask.title}</h3>
-          <div className="flex gap-2 flex-wrap justify-center mt-2">
-            {Object.entries(focusTask.tagPoints).map(([tag, points]) => (
-              <span key={tag} className="badge badge-outline">
-                {tag}: {points}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Quick actions for focus task */}
+      <div className="flex justify-center gap-2">
+        <button
+          onClick={() => handleSkipClick('for_now')}
+          className="btn btn-ghost btn-sm gap-1"
+        >
+          <ion-icon name="play-skip-forward-outline"></ion-icon> Skip for now
+        </button>
+        <button
+          onClick={() => handleSkipClick('for_day')}
+          className="btn btn-ghost btn-sm gap-1"
+        >
+          <ion-icon name="calendar-outline"></ion-icon> Skip for day
+        </button>
+        <button
+          onClick={handleOpenTaskDetail}
+          className="btn btn-ghost btn-sm gap-1"
+        >
+          <ion-icon name="create-outline"></ion-icon> Details
+        </button>
+      </div>
 
-      {/* Up Next */}
+      {/* Up next preview */}
       {upNext.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-3">Up Next</h3>
+          <p className="text-sm opacity-60 mb-2 text-center">Up next</p>
           <div className="space-y-2">
-            {upNext.slice(0, 3).map((task) => (
-              <div
-                key={task.id}
-                className="card bg-base-100 shadow-sm"
-              >
-                <div className="card-body p-4">
-                  <div className="flex justify-between items-center">
-                    <span>{task.title}</span>
-                    <span className="badge">{task.totalPoints} pts</span>
+            {upNext.slice(0, 3).map((task) => {
+              const primaryTag = getTaskPrimaryTag(task);
+              return (
+                <div key={task.id} className="card bg-base-100 shadow-sm">
+                  <div className="card-body p-3 flex-row items-center gap-3">
+                    <div
+                      className="w-1 h-8 rounded-full"
+                      style={{ backgroundColor: primaryTag?.color || '#888' }}
+                    />
+                    <span className="flex-1 font-medium truncate">{task.title}</span>
+                    <button className="btn btn-ghost btn-circle btn-xs">
+                      <ion-icon name="chevron-forward-outline"></ion-icon>
+                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -199,23 +176,41 @@ export function FocusView() {
       <SkipTaskModal
         isOpen={skipModalOpen}
         onClose={() => setSkipModalOpen(false)}
-        onSkipped={loadFocusData}
+        onSkipped={() => {
+          skipCurrentTask(skipType);
+          setSkipModalOpen(false);
+        }}
         taskId={focusTask.id}
         taskTitle={focusTask.title}
         skipType={skipType}
       />
 
       {/* End Session Modal */}
-      {hasActiveSession && (
+      {activeSession && (
         <EndSessionModal
           isOpen={endSessionModalOpen}
           onClose={() => setEndSessionModalOpen(false)}
-          onEnded={loadFocusData}
-          taskId={focusTask.id}
-          sessionId={focusTask.activeSession!.id}
+          onEnded={() => setEndSessionModalOpen(false)}
+          taskId={activeSession.taskId}
+          sessionId={activeSession.sessionId}
           taskTitle={focusTask.title}
         />
       )}
+
+      {/* Task Detail Modal */}
+      <TaskDetailModal
+        isOpen={taskDetailOpen}
+        onClose={() => setTaskDetailOpen(false)}
+        task={focusTask ? {
+          ...focusTask,
+          status: 'active' as const,
+          tags: Object.keys(focusTask.tagPoints).map(tagId => {
+            const tag = getTagById(tagId);
+            return { id: tagId, name: tag?.name || tagId, color: tag?.color || '#888' };
+          })
+        } : null}
+        onStartSession={() => handleStartSession()}
+      />
     </div>
   );
 }

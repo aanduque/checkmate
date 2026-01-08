@@ -4,32 +4,50 @@
  */
 
 import { useStore, useSelector } from 'statux';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TaskDTO, SprintDTO } from '../services/rpcClient';
-import { mockKanbanData, mockSprints, mockExtendedTasks, ExtendedTaskDTO } from '../mocks/mockData';
+import { mockKanbanData, mockSprints, KanbanData } from '../mocks/mockData';
 import type { AppState } from '../store';
 
 // Flag to use mock data
 const USE_MOCKS = true;
 
-export interface KanbanBoard {
-  backlog: ExtendedTaskDTO[];
-  thisWeek: ExtendedTaskDTO[];
-  nextWeek: ExtendedTaskDTO[];
-  recurringTemplates: ExtendedTaskDTO[];
-}
-
 export function useKanban() {
   const [sprints, setSprints] = useStore<SprintDTO[]>('sprints');
   const tasks = useSelector<TaskDTO[]>('tasks');
   const [ui, setUi] = useStore<AppState['ui']>('ui');
+  const [kanbanData, setKanbanData] = useState<KanbanData>(mockKanbanData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load sprints on mount
+  // Load data on mount
   useEffect(() => {
-    if (USE_MOCKS && sprints.length === 0) {
-      setSprints(mockSprints);
-    }
+    loadKanban();
   }, []);
+
+  const loadKanban = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (USE_MOCKS) {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (sprints.length === 0) {
+          setSprints(mockSprints);
+        }
+        setKanbanData(mockKanbanData);
+      } else {
+        // TODO: Call RPC when backend ready
+        // const data = await taskApi.getKanban();
+        // setKanbanData(data);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load kanban data');
+    } finally {
+      setLoading(false);
+    }
+  }, [sprints.length, setSprints]);
 
   // Get current sprint
   const currentSprint = useMemo(() => {
@@ -41,30 +59,60 @@ export function useKanban() {
     return sprints[1] || null;
   }, [sprints]);
 
-  // Board data (mocked for now)
-  const board = useMemo((): KanbanBoard => {
-    if (USE_MOCKS) {
-      return mockKanbanData;
-    }
-
-    // When backend is ready, compute from tasks + sprints
-    return {
-      backlog: [],
-      thisWeek: [],
-      nextWeek: [],
-      recurringTemplates: []
-    };
-  }, [tasks, sprints]);
-
   // Move task between columns
   const moveTask = useCallback(async (
     taskId: string,
-    destination: 'backlog' | 'sprint-0' | 'sprint-1'
+    destination: string
   ) => {
     // TODO: Call RPC when backend ready
     console.log(`Moving task ${taskId} to ${destination}`);
+
+    // Update local state optimistically
+    setKanbanData(prev => {
+      const findAndRemoveTask = () => {
+        for (const column of ['backlog', 'thisWeek', 'nextWeek'] as const) {
+          const index = prev[column].findIndex(t => t.id === taskId);
+          if (index !== -1) {
+            const task = prev[column][index];
+            const newColumn = [...prev[column]];
+            newColumn.splice(index, 1);
+            return { task, column, newData: { ...prev, [column]: newColumn } };
+          }
+        }
+        return null;
+      };
+
+      const result = findAndRemoveTask();
+      if (!result) return prev;
+
+      const { task, newData } = result;
+
+      // Map destination to column name
+      let targetColumn: keyof KanbanData;
+      if (destination === 'backlog') {
+        targetColumn = 'backlog';
+      } else if (destination.includes('sprint-0') || destination === currentSprint?.id) {
+        targetColumn = 'thisWeek';
+      } else {
+        targetColumn = 'nextWeek';
+      }
+
+      // Update task location
+      const updatedTask = {
+        ...task,
+        location: destination === 'backlog'
+          ? { type: 'backlog' as const }
+          : { type: 'sprint' as const, sprintId: destination }
+      };
+
+      return {
+        ...newData,
+        [targetColumn]: [...newData[targetColumn], updatedTask]
+      };
+    });
+
     setUi(prev => ({ ...prev, refreshKey: prev.refreshKey + 1 }));
-  }, [setUi]);
+  }, [currentSprint, setUi]);
 
   // Reorder task within column
   const reorderTask = useCallback(async (
@@ -79,14 +127,14 @@ export function useKanban() {
   // Get sprint health
   const getSprintHealth = useCallback((sprintId: string) => {
     // Simplified health calculation
-    const sprintTasks = sprintId === 'sprint-0' ? board.thisWeek : board.nextWeek;
+    const sprintTasks = sprintId === 'sprint-0' ? kanbanData.thisWeek : kanbanData.nextWeek;
     const totalPoints = sprintTasks.reduce((sum, t) => sum + t.totalPoints, 0);
 
     // Simple health based on points
     if (totalPoints > 30) return 'off_track';
     if (totalPoints > 20) return 'at_risk';
     return 'on_track';
-  }, [board]);
+  }, [kanbanData]);
 
   // Get days remaining in sprint
   const getDaysRemaining = useCallback((sprint: SprintDTO) => {
@@ -98,10 +146,13 @@ export function useKanban() {
   }, []);
 
   return {
-    board,
+    kanbanData,
+    loading,
+    error,
     sprints,
     currentSprint,
     nextSprint,
+    loadKanban,
     moveTask,
     reorderTask,
     getSprintHealth,

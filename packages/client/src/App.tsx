@@ -4,9 +4,10 @@ import { FAB } from './components/layout/FAB';
 import { FocusView } from './components/views/FocusView';
 import { TasksView } from './components/views/TasksView';
 import { StatsView } from './components/views/StatsView';
+import { SettingsView } from './components/views/SettingsView';
 import { CreateTaskModal } from './components/modals/CreateTaskModal';
 
-type View = 'focus' | 'tasks' | 'stats';
+type View = 'focus' | 'tasks' | 'stats' | 'settings';
 
 export function App() {
   const [currentView, setCurrentView] = useState<View>('focus');
@@ -26,6 +27,8 @@ export function App() {
         return <TasksView key={refreshKey} />;
       case 'stats':
         return <StatsView />;
+      case 'settings':
+        return <SettingsView />;
       default:
         return <FocusView key={refreshKey} />;
     }

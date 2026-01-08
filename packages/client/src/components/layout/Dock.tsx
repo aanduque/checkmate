@@ -1,6 +1,6 @@
 import React from 'react';
 
-type View = 'focus' | 'tasks' | 'stats';
+type View = 'focus' | 'tasks' | 'stats' | 'settings';
 
 interface DockProps {
   currentView: View;
@@ -11,7 +11,8 @@ export function Dock({ currentView, onViewChange }: DockProps) {
   const items = [
     { id: 'focus' as View, icon: '🎯', label: 'Focus' },
     { id: 'tasks' as View, icon: '📋', label: 'Tasks' },
-    { id: 'stats' as View, icon: '📊', label: 'Stats' }
+    { id: 'stats' as View, icon: '📊', label: 'Stats' },
+    { id: 'settings' as View, icon: '⚙️', label: 'Settings' }
   ];
 
   return (

@@ -10,6 +10,7 @@ import { registerTaskMethods } from './methods/taskMethods';
 import { registerSessionMethods } from './methods/sessionMethods';
 import { registerTagMethods } from './methods/tagMethods';
 import { registerSprintMethods } from './methods/sprintMethods';
+import { registerStatsMethods } from './methods/statsMethods';
 
 // Application handlers
 import {
@@ -25,7 +26,8 @@ import {
   GetAllTagsHandler,
   CreateSprintHandler,
   GetCurrentSprintHandler,
-  GetUpcomingSprintsHandler
+  GetUpcomingSprintsHandler,
+  GetStatsHandler
 } from '@checkmate/application';
 
 // Infrastructure repositories
@@ -36,7 +38,7 @@ import {
 } from '@checkmate/infrastructure';
 
 // Domain services
-import { TaskOrderingService } from '@checkmate/domain';
+import { TaskOrderingService, StatsCalculator } from '@checkmate/domain';
 
 // In-memory storage for server-side (simulating localStorage)
 class MemoryStorage implements Storage {
@@ -77,6 +79,7 @@ const sprintRepository = new LocalStorageSprintRepository(storage);
 
 // Create domain services
 const orderingService = new TaskOrderingService();
+const statsCalculator = new StatsCalculator();
 
 // Create handlers
 const handlers = {
@@ -92,7 +95,8 @@ const handlers = {
   getAllTagsHandler: new GetAllTagsHandler(tagRepository),
   createSprintHandler: new CreateSprintHandler(sprintRepository),
   getCurrentSprintHandler: new GetCurrentSprintHandler(sprintRepository),
-  getUpcomingSprintsHandler: new GetUpcomingSprintsHandler(sprintRepository)
+  getUpcomingSprintsHandler: new GetUpcomingSprintsHandler(sprintRepository),
+  getStatsHandler: new GetStatsHandler(taskRepository, statsCalculator)
 };
 
 // Create RPC server
@@ -103,6 +107,7 @@ registerTaskMethods(rpcServer, handlers);
 registerSessionMethods(rpcServer, handlers);
 registerTagMethods(rpcServer, handlers);
 registerSprintMethods(rpcServer, handlers);
+registerStatsMethods(rpcServer, handlers);
 
 // Start HTTP server
 const PORT = parseInt(process.env.PORT || '3001', 10);

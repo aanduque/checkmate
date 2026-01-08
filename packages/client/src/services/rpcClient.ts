@@ -107,6 +107,27 @@ export const tagApi = {
   getAll: () => rpc.call<{ tags: TagDTO[] }>('tag.getAll', {})
 };
 
+// Sprint methods
+export const sprintApi = {
+  create: (startDate: string) =>
+    rpc.call<SprintDTO>('sprint.create', { startDate }),
+
+  getCurrent: () =>
+    rpc.call<SprintDTO | null>('sprint.getCurrent', {}),
+
+  getUpcoming: (limit?: number) =>
+    rpc.call<SprintDTO[]>('sprint.getUpcoming', { limit })
+};
+
+// Stats methods
+export const statsApi = {
+  getDaily: (date?: string) =>
+    rpc.call<DailyStatsDTO>('stats.getDaily', { date }),
+
+  getWeekly: (date?: string) =>
+    rpc.call<WeeklyStatsDTO>('stats.getWeekly', { date })
+};
+
 // DTOs
 export interface TagDTO {
   id: string;
@@ -134,4 +155,40 @@ export interface FocusTaskDTO {
     startedAt: Date;
     durationMinutes: number;
   };
+}
+
+export interface SprintDTO {
+  id: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface DailyStatsDTO {
+  tasksCompleted: number;
+  pointsCompleted: number;
+  focusTimeSeconds: number;
+  sessionsCount: number;
+  currentStreak: number;
+  focusQuality?: {
+    distractedCount: number;
+    neutralCount: number;
+    focusedCount: number;
+    averageScore: number;
+  };
+}
+
+export interface WeeklyStatsDTO {
+  tasksCompleted: number;
+  pointsCompleted: number;
+  focusTimeSeconds: number;
+  sessionsCount: number;
+  currentStreak: number;
+  dailyActivity?: Array<{
+    date: string;
+    tasksCompleted: number;
+    pointsCompleted: number;
+    focusTimeSeconds: number;
+    sessionsCount: number;
+  }>;
+  pointsByTag?: Record<string, number>;
 }

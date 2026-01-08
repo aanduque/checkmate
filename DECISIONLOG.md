@@ -583,7 +583,7 @@ Use [Statux](https://statux.dev/) for global state management.
 **Consequences:**
 - Store wraps App in main.tsx with initial state
 - Components use `useStore()` for read/write, `useSelector()` for read-only
-- State structure defined in `packages/client/src/store/index.ts`
+- State structure defined in `apps/web/src/store/index.ts`
 - Infrastructure concern — Store setup in client entry point
 
 ---

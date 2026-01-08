@@ -69,7 +69,7 @@ See `DECISIONLOG.md` for detailed architecture decisions (DEC-021 through DEC-02
 # Development
 bun dev                   # Start both server and client
 bun dev:server            # Start JSON-RPC server only
-bun dev:client            # Start Vite dev server only
+bun dev:web               # Start Vite dev server only
 
 # Testing
 bun test                  # Run all tests

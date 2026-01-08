@@ -16,8 +16,8 @@ This document outlines all missing features compared to the POC (`poc/index.html
 
 | Library | Purpose | Status | Architecture Layer |
 |---------|---------|--------|-------------------|
-| **Crossroad** | URL-based routing | ✅ Integrated in main.tsx | Client infrastructure |
-| **Statux** | Global state management | ✅ Integrated in main.tsx | Client infrastructure |
+| **Crossroad** | URL-based routing | 🔲 Pending (decision made) | Client infrastructure |
+| **Statux** | Global state management | 🔲 Pending (decision made) | Client infrastructure |
 | **OpenRPC** | API schema + types | 🔲 Pending | Server infrastructure (packages/shared) |
 | **Ionicons** | Icon system | 🔲 Using emoji placeholders | Client infrastructure |
 | **RRule** | Recurrence parsing | 🔲 In deps, needs adapter | Port/Adapter pattern |
@@ -214,9 +214,9 @@ Will be defined in `packages/shared/openrpc.yaml`:
 
 ---
 
-## 6. State Management (Statux) - ✅ INTEGRATED
+## 6. State Management (Statux) - 🔲 PENDING
 
-### Store Structure (defined in packages/client/src/store/index.ts)
+### Store Structure (to be defined in apps/web/src/store/index.ts)
 ```typescript
 {
   tasks: [],
@@ -292,8 +292,8 @@ Will be defined in `packages/shared/openrpc.yaml`:
 8. Register data management methods
 
 ### Phase 6: Client - Routing & State Hooks
-1. ✅ Crossroad router integrated
-2. ✅ Statux store integrated
+1. 🔲 Integrate Crossroad router
+2. 🔲 Integrate Statux store
 3. Update App.tsx to use Route components
 4. Update Dock to use anchor navigation
 5. Create custom hooks (useTasks, useKanban, etc.)

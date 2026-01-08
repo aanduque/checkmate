@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { taskApi, TaskDTO } from '../../services/rpcClient';
 import { KanbanBoard } from '../kanban/KanbanBoard';
+import { CancelTaskModal } from '../modals/CancelTaskModal';
 
 export function TasksView() {
   const [backlog, setBacklog] = useState<TaskDTO[]>([]);
@@ -8,6 +9,10 @@ export function TasksView() {
   const [completed, setCompleted] = useState<TaskDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Cancel modal state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [taskToCancel, setTaskToCancel] = useState<TaskDTO | null>(null);
 
   useEffect(() => {
     loadKanban();
@@ -29,12 +34,18 @@ export function TasksView() {
   };
 
   const handleTaskAction = async (taskId: string, action: 'complete' | 'cancel') => {
-    try {
-      if (action === 'complete') {
-        await taskApi.complete(taskId);
-      } else {
-        await taskApi.cancel(taskId, 'Canceled from kanban');
+    if (action === 'cancel') {
+      // Find the task to show in modal
+      const task = [...backlog, ...sprint, ...completed].find(t => t.id === taskId);
+      if (task) {
+        setTaskToCancel(task);
+        setCancelModalOpen(true);
       }
+      return;
+    }
+
+    try {
+      await taskApi.complete(taskId);
       loadKanban();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action failed');
@@ -71,6 +82,23 @@ export function TasksView() {
         completed={completed}
         onTaskAction={handleTaskAction}
       />
+
+      {/* Cancel Modal */}
+      {taskToCancel && (
+        <CancelTaskModal
+          isOpen={cancelModalOpen}
+          onClose={() => {
+            setCancelModalOpen(false);
+            setTaskToCancel(null);
+          }}
+          onCanceled={() => {
+            loadKanban();
+            setTaskToCancel(null);
+          }}
+          taskId={taskToCancel.id}
+          taskTitle={taskToCancel.title}
+        />
+      )}
     </div>
   );
 }

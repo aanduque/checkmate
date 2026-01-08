@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { taskApi, sessionApi, FocusTaskDTO } from '../../services/rpcClient';
+import { SessionTimer } from '../focus/SessionTimer';
+import { SkipTaskModal } from '../modals/SkipTaskModal';
+import { EndSessionModal } from '../modals/EndSessionModal';
 
 export function FocusView() {
   const [focusTask, setFocusTask] = useState<FocusTaskDTO | null>(null);
   const [upNext, setUpNext] = useState<FocusTaskDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [skipModalOpen, setSkipModalOpen] = useState(false);
+  const [skipType, setSkipType] = useState<'for_now' | 'for_day'>('for_now');
+  const [endSessionModalOpen, setEndSessionModalOpen] = useState(false);
 
   useEffect(() => {
     loadFocusData();
@@ -36,14 +44,9 @@ export function FocusView() {
     }
   };
 
-  const handleSkip = async (type: 'for_now' | 'for_day') => {
-    if (!focusTask) return;
-    try {
-      await taskApi.skip(focusTask.id, type, type === 'for_day' ? 'Skipped for today' : undefined);
-      loadFocusData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to skip');
-    }
+  const handleSkipClick = (type: 'for_now' | 'for_day') => {
+    setSkipType(type);
+    setSkipModalOpen(true);
   };
 
   const handleComplete = async () => {
@@ -54,6 +57,10 @@ export function FocusView() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete');
     }
+  };
+
+  const handleEndSessionClick = () => {
+    setEndSessionModalOpen(true);
   };
 
   if (loading) {
@@ -89,57 +96,82 @@ export function FocusView() {
     );
   }
 
+  const hasActiveSession = focusTask.activeSession;
+
   return (
     <div className="p-4">
-      {/* Current Focus Task */}
-      <div className="card bg-base-200 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title text-2xl">{focusTask.title}</h2>
+      {/* Active Session Timer */}
+      {hasActiveSession ? (
+        <SessionTimer
+          startedAt={focusTask.activeSession!.startedAt}
+          durationMinutes={focusTask.activeSession!.durationMinutes}
+          onEnd={handleEndSessionClick}
+        />
+      ) : (
+        /* Current Focus Task */
+        <div className="card bg-base-200 shadow-xl">
+          <div className="card-body">
+            <h2 className="card-title text-2xl">{focusTask.title}</h2>
 
-          <div className="flex gap-2 flex-wrap mt-2">
+            <div className="flex gap-2 flex-wrap mt-2">
+              {Object.entries(focusTask.tagPoints).map(([tag, points]) => (
+                <span key={tag} className="badge badge-primary">
+                  {tag}: {points}
+                </span>
+              ))}
+            </div>
+
+            <div className="text-lg font-semibold mt-2">
+              {focusTask.totalPoints} points
+            </div>
+
+            {/* Actions */}
+            <div className="card-actions justify-center mt-4">
+              <button
+                className="btn btn-primary btn-lg"
+                onClick={handleStartSession}
+              >
+                Start Session
+              </button>
+            </div>
+
+            <div className="flex justify-center gap-4 mt-4">
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => handleSkipClick('for_now')}
+              >
+                Skip for now
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => handleSkipClick('for_day')}
+              >
+                Skip for day
+              </button>
+              <button
+                className="btn btn-success btn-sm"
+                onClick={handleComplete}
+              >
+                Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Title During Session */}
+      {hasActiveSession && (
+        <div className="mt-4 text-center">
+          <h3 className="text-lg font-semibold">{focusTask.title}</h3>
+          <div className="flex gap-2 flex-wrap justify-center mt-2">
             {Object.entries(focusTask.tagPoints).map(([tag, points]) => (
-              <span key={tag} className="badge badge-primary">
+              <span key={tag} className="badge badge-outline">
                 {tag}: {points}
               </span>
             ))}
           </div>
-
-          <div className="text-lg font-semibold mt-2">
-            {focusTask.totalPoints} points
-          </div>
-
-          {/* Actions */}
-          <div className="card-actions justify-center mt-4">
-            <button
-              className="btn btn-primary btn-lg"
-              onClick={handleStartSession}
-            >
-              Start Session
-            </button>
-          </div>
-
-          <div className="flex justify-center gap-4 mt-4">
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => handleSkip('for_now')}
-            >
-              Skip for now
-            </button>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => handleSkip('for_day')}
-            >
-              Skip for day
-            </button>
-            <button
-              className="btn btn-success btn-sm"
-              onClick={handleComplete}
-            >
-              Complete
-            </button>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Up Next */}
       {upNext.length > 0 && (
@@ -161,6 +193,28 @@ export function FocusView() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Skip Modal */}
+      <SkipTaskModal
+        isOpen={skipModalOpen}
+        onClose={() => setSkipModalOpen(false)}
+        onSkipped={loadFocusData}
+        taskId={focusTask.id}
+        taskTitle={focusTask.title}
+        skipType={skipType}
+      />
+
+      {/* End Session Modal */}
+      {hasActiveSession && (
+        <EndSessionModal
+          isOpen={endSessionModalOpen}
+          onClose={() => setEndSessionModalOpen(false)}
+          onEnded={loadFocusData}
+          taskId={focusTask.id}
+          sessionId={focusTask.activeSession!.id}
+          taskTitle={focusTask.title}
+        />
       )}
     </div>
   );

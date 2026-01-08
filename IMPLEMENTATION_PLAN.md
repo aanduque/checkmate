@@ -382,5 +382,137 @@ All questions from original plan have been resolved:
 
 ---
 
+## 11. Parallel Development Strategy
+
+The implementation can be parallelized across 3 independent work streams to maximize development velocity.
+
+### 11.1 Dependency Graph
+
+```
+Phase 1 (OpenRPC) ─────────────────────────────┐
+                                               ├──→ Phase 5 (Server Methods)
+Phase 2 (Ports) → Phase 3 (Domain) → Phase 4 ──┘           │
+                                     (App Layer)           │
+                                                           ▼
+Phase 6 (Client Hooks) ←───────────────────────────────────┘
+        │
+        ├──→ Phase 7 (Layout)
+        ├──→ Phase 8 (Modals)
+        ├──→ Phase 9 (Kanban)
+        └──→ Phase 10 (Views)
+                    │
+                    ▼
+              Phase 11 (Polish)
+```
+
+### 11.2 Recommended: 3 Parallel Instances
+
+#### Stream A: Backend Domain (1 instance)
+
+| Phases | Focus |
+|--------|-------|
+| 2, 3, 4 | Ports, Domain entities, Application layer |
+
+**Owns:**
+- `packages/domain/*`
+- `packages/application/*`
+- `packages/infrastructure/src/adapters/*`
+
+**Does NOT touch:**
+- `packages/server/*`
+- `packages/client/*`
+- `packages/shared/*`
+
+#### Stream B: OpenRPC + Server (1 instance)
+
+| Phases | Focus |
+|--------|-------|
+| 1, 5 | Schema, type generation, server methods |
+
+**Owns:**
+- `packages/shared/*` (new)
+- `packages/server/*`
+
+**Does NOT touch:**
+- `packages/domain/*`
+- `packages/application/*`
+- `packages/client/*`
+
+**Note:** Phase 5 requires handlers from Stream A. Can stub handlers initially or wait for Phase 4 completion.
+
+#### Stream C: Client UI (1 instance)
+
+| Phases | Focus |
+|--------|-------|
+| 6-10 | Routing, hooks, layout, modals, views |
+
+**Owns:**
+- `packages/client/*`
+
+**Does NOT touch:**
+- `packages/domain/*`
+- `packages/server/*`
+- `packages/shared/*`
+
+**Note:** Can mock RPC calls until Stream B completes.
+
+### 11.3 Conflict Zones
+
+These files require coordination if multiple streams need changes:
+
+| File | Primary Owner | Risk |
+|------|---------------|------|
+| `packages/client/src/store/index.ts` | Stream C | High |
+| `packages/shared/openrpc.yaml` | Stream B | High |
+| `packages/server/src/index.ts` | Stream B | Medium |
+| `package.json` (root) | Any | Low |
+
+### 11.4 Execution Timeline
+
+```
+Sprint 1 (Parallel):
+├── Stream A: Phase 2 + Phase 3 (Ports, Domain entities)
+├── Stream B: Phase 1 (OpenRPC setup, schema for existing methods)
+└── Stream C: Phase 6 (Routing, hooks with mocks)
+
+Sprint 2 (Parallel):
+├── Stream A: Phase 4 (Application layer commands/queries)
+├── Stream B: Extend schema with new methods
+└── Stream C: Phase 7 + Phase 8 (Layout, Modals)
+
+Sprint 3 (Convergence):
+├── Stream B: Phase 5 (Wire handlers from Stream A)
+├── Stream C: Phase 9 + Phase 10 (Kanban, Views)
+└── Integration: Connect real API to client hooks
+
+Sprint 4:
+└── All: Phase 11 (Polish, Ionicons, testing)
+```
+
+### 11.5 Instance Quick Reference
+
+**Stream A prompt:**
+```
+Focus: packages/domain/*, packages/application/*, packages/infrastructure/adapters/*
+DO NOT touch: packages/server/*, packages/client/*, packages/shared/*
+Start: Phase 2 - Create IFilterExpressionEvaluator and IRecurrenceCalculator ports
+```
+
+**Stream B prompt:**
+```
+Focus: packages/shared/* (new), packages/server/*
+DO NOT touch: packages/domain/*, packages/application/*, packages/client/*
+Start: Phase 1 - Create packages/shared with openrpc.yaml schema
+```
+
+**Stream C prompt:**
+```
+Focus: packages/client/*
+DO NOT touch: packages/domain/*, packages/server/*, packages/shared/*
+Start: Phase 6 - Update App.tsx with Crossroad Route components
+```
+
+---
+
 *Document updated: 2025-01-08*
 *See DECISIONLOG.md for detailed decision rationale*

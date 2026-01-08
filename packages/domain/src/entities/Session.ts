@@ -37,6 +37,36 @@ export class Session {
     );
   }
 
+  static createManual(params: {
+    duration: number; // minutes
+    date: Date;
+    focusLevel: FocusLevel;
+    note?: string;
+  }): Session {
+    if (params.duration < 1 || params.duration > 480) {
+      throw new Error('Duration must be between 1 and 480 minutes');
+    }
+
+    const startedAt = new Date(params.date);
+    const endedAt = new Date(startedAt.getTime() + params.duration * 60 * 1000);
+    const comments: Comment[] = [];
+
+    if (params.note && params.note.trim()) {
+      comments.push(
+        Comment.create({ content: params.note, skipJustification: false })
+      );
+    }
+
+    return new Session(
+      SessionId.create(),
+      'completed',
+      startedAt,
+      endedAt,
+      params.focusLevel,
+      comments
+    );
+  }
+
   static fromProps(props: SessionProps): Session {
     return new Session(
       props.id,
@@ -89,6 +119,12 @@ export class Session {
     return Math.floor(
       (this._endedAt.getTime() - this._startedAt.getTime()) / 1000
     );
+  }
+
+  getDurationMinutes(): number | undefined {
+    const seconds = this.getDuration();
+    if (seconds === undefined) return undefined;
+    return Math.floor(seconds / 60);
   }
 
   complete(focusLevel: FocusLevel, note?: string): void {

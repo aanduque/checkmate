@@ -220,4 +220,153 @@ export class StatsService {
 
     return { focused, neutral, distracted };
   }
+
+  /**
+   * Calculate focus quality as percentages
+   */
+  getFocusQualityPercentages(tasks: Task[]): {
+    focusedPercent: number;
+    neutralPercent: number;
+    distractedPercent: number;
+  } {
+    const quality = this.getFocusQuality(tasks);
+    const total = quality.focused + quality.neutral + quality.distracted;
+
+    if (total === 0) {
+      return { focusedPercent: 0, neutralPercent: 0, distractedPercent: 0 };
+    }
+
+    return {
+      focusedPercent: (quality.focused / total) * 100,
+      neutralPercent: (quality.neutral / total) * 100,
+      distractedPercent: (quality.distracted / total) * 100,
+    };
+  }
+
+  /**
+   * Compare this week vs last week
+   */
+  getWeeklyComparison(
+    tasks: Task[],
+    today: Date = new Date()
+  ): {
+    thisWeekPoints: number;
+    lastWeekPoints: number;
+    trend: 'up' | 'down' | 'same';
+  } {
+    const startOfThisWeek = this.getStartOfWeek(today);
+    const startOfLastWeek = new Date(startOfThisWeek);
+    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+    let thisWeekPoints = 0;
+    let lastWeekPoints = 0;
+
+    for (const task of tasks) {
+      if (task.isCompleted() && task.completedAt) {
+        const points = task.tagPoints.getTotalPoints();
+        if (task.completedAt >= startOfThisWeek) {
+          thisWeekPoints += points;
+        } else if (task.completedAt >= startOfLastWeek && task.completedAt < startOfThisWeek) {
+          lastWeekPoints += points;
+        }
+      }
+    }
+
+    let trend: 'up' | 'down' | 'same' = 'same';
+    if (thisWeekPoints > lastWeekPoints) {
+      trend = 'up';
+    } else if (thisWeekPoints < lastWeekPoints) {
+      trend = 'down';
+    }
+
+    return { thisWeekPoints, lastWeekPoints, trend };
+  }
+
+  /**
+   * Calculate weekly points by tag
+   */
+  getWeeklyPointsByTag(
+    tasks: Task[],
+    tags: Tag[],
+    today: Date = new Date()
+  ): Record<string, number> {
+    const startOfWeek = this.getStartOfWeek(today);
+    const pointsByTag: Record<string, number> = {};
+
+    // Initialize all tags to 0
+    for (const tag of tags) {
+      pointsByTag[tag.id.toString()] = 0;
+    }
+
+    for (const task of tasks) {
+      if (task.isCompleted() && task.completedAt && task.completedAt >= startOfWeek) {
+        const tagPointsRecord = task.tagPoints.toRecord();
+        for (const [tagId, points] of Object.entries(tagPointsRecord)) {
+          if (pointsByTag[tagId] !== undefined) {
+            pointsByTag[tagId] += points;
+          }
+        }
+      }
+    }
+
+    return pointsByTag;
+  }
+
+  /**
+   * Get stats for canceled tasks
+   */
+  getCanceledTasksStats(
+    tasks: Task[],
+    today: Date = new Date()
+  ): {
+    canceledToday: number;
+    canceledPointsToday: number;
+    canceledThisWeek: number;
+    canceledPointsThisWeek: number;
+  } {
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+    const startOfWeek = this.getStartOfWeek(today);
+
+    let canceledToday = 0;
+    let canceledPointsToday = 0;
+    let canceledThisWeek = 0;
+    let canceledPointsThisWeek = 0;
+
+    for (const task of tasks) {
+      if (task.isCanceled() && task.canceledAt) {
+        const points = task.tagPoints.getTotalPoints();
+
+        if (task.canceledAt >= startOfDay && task.canceledAt <= endOfDay) {
+          canceledToday++;
+          canceledPointsToday += points;
+        }
+
+        if (task.canceledAt >= startOfWeek) {
+          canceledThisWeek++;
+          canceledPointsThisWeek += points;
+        }
+      }
+    }
+
+    return {
+      canceledToday,
+      canceledPointsToday,
+      canceledThisWeek,
+      canceledPointsThisWeek,
+    };
+  }
+
+  /**
+   * Helper: Get start of week (Sunday)
+   */
+  private getStartOfWeek(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    d.setDate(d.getDate() - day);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
 }

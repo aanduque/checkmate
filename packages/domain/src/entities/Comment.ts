@@ -6,11 +6,13 @@ export interface CommentProps {
   createdAt: Date;
   updatedAt?: Date;
   skipJustification: boolean;
+  cancelJustification: boolean;
 }
 
 export interface CreateCommentProps {
   content: string;
   skipJustification?: boolean;
+  cancelJustification?: boolean;
 }
 
 /**
@@ -23,7 +25,8 @@ export class Comment {
     private _content: string,
     private readonly _createdAt: Date,
     private _updatedAt: Date | undefined,
-    private readonly _skipJustification: boolean
+    private readonly _skipJustification: boolean,
+    private readonly _cancelJustification: boolean
   ) {}
 
   static create(props: CreateCommentProps): Comment {
@@ -36,7 +39,8 @@ export class Comment {
       props.content.trim(),
       new Date(),
       undefined,
-      props.skipJustification ?? false
+      props.skipJustification ?? false,
+      props.cancelJustification ?? false
     );
   }
 
@@ -46,7 +50,8 @@ export class Comment {
       props.content,
       props.createdAt,
       props.updatedAt,
-      props.skipJustification
+      props.skipJustification,
+      props.cancelJustification
     );
   }
 
@@ -70,6 +75,10 @@ export class Comment {
     return this._skipJustification;
   }
 
+  get cancelJustification(): boolean {
+    return this._cancelJustification;
+  }
+
   updateContent(content: string): void {
     if (!content || content.trim() === '') {
       throw new Error('Comment content cannot be empty');
@@ -84,6 +93,7 @@ export class Comment {
     createdAt: string;
     updatedAt: string | null;
     skipJustification: boolean;
+    cancelJustification: boolean;
   } {
     return {
       id: this._id.toString(),
@@ -91,6 +101,7 @@ export class Comment {
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt?.toISOString() ?? null,
       skipJustification: this._skipJustification,
+      cancelJustification: this._cancelJustification,
     };
   }
 }

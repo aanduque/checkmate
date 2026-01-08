@@ -201,6 +201,10 @@ export class Task {
     );
   }
 
+  getTotalPoints(): number {
+    return this._tagPoints.getTotalPoints();
+  }
+
   // Mutations (only on active tasks)
   private ensureActive(): void {
     if (!this.isActive()) {
@@ -238,6 +242,23 @@ export class Task {
     this._status = 'canceled';
     this._canceledAt = new Date();
     this._skipState = undefined;
+  }
+
+  cancelWithJustification(justification: string): CommentId {
+    this.ensureActive();
+    if (!justification || justification.trim() === '') {
+      throw new Error('Cancel justification is required');
+    }
+
+    const comment = Comment.create({
+      content: justification,
+      cancelJustification: true,
+    });
+    this._comments.push(comment);
+    this._status = 'canceled';
+    this._canceledAt = new Date();
+    this._skipState = undefined;
+    return comment.id;
   }
 
   // Location management
@@ -358,6 +379,18 @@ export class Task {
       throw new Error('Session not found');
     }
     session.abandon();
+  }
+
+  addManualSession(params: {
+    duration: number;
+    date: Date;
+    focusLevel: FocusLevel;
+    note?: string;
+  }): Session {
+    this.ensureActive();
+    const session = Session.createManual(params);
+    this._sessions.push(session);
+    return session;
   }
 
   // Spawn instance from recurring template

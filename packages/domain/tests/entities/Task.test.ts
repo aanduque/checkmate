@@ -256,4 +256,236 @@ describe('Task', () => {
       );
     });
   });
+
+  describe('update operations', () => {
+    it('should update task title', () => {
+      const task = Task.create({
+        title: 'Original title',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      task.updateTitle('Updated title');
+
+      expect(task.title).toBe('Updated title');
+    });
+
+    it('should update task description', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      task.updateDescription('New description');
+
+      expect(task.description).toBe('New description');
+    });
+
+    it('should update tag points (add new tag)', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      task.updateTagPoints({ 'tag-1': 1, 'tag-2': 3 });
+
+      expect(task.tagPoints.toRecord()).toEqual({ 'tag-1': 1, 'tag-2': 3 });
+    });
+
+    it('should update tag points (remove tag)', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1, 'tag-2': 3 },
+      });
+
+      task.updateTagPoints({ 'tag-2': 3 });
+
+      expect(task.tagPoints.toRecord()).toEqual({ 'tag-2': 3 });
+    });
+
+    it('should not update tag points with invalid Fibonacci value', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      expect(() => task.updateTagPoints({ 'tag-1': 4 })).toThrow('Invalid points value');
+    });
+
+    it('should not update completed task', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+      task.complete();
+
+      expect(() => task.updateTitle('New')).toThrow('Cannot modify a completed or canceled task');
+      expect(() => task.updateDescription('New')).toThrow('Cannot modify a completed or canceled task');
+      expect(() => task.updateTagPoints({ 'tag-1': 2 })).toThrow('Cannot modify a completed or canceled task');
+    });
+
+    it('should not update canceled task', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+      task.cancel();
+
+      expect(() => task.updateTitle('New')).toThrow('Cannot modify a completed or canceled task');
+    });
+  });
+
+  describe('cancel with justification', () => {
+    it('should cancel task with justification comment', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      const commentId = task.cancelWithJustification('No longer needed');
+
+      expect(task.isCanceled()).toBe(true);
+      expect(task.canceledAt).toBeDefined();
+      expect(task.comments.length).toBe(1);
+      expect(task.comments[0].content).toBe('No longer needed');
+      expect(task.comments[0].cancelJustification).toBe(true);
+      expect(task.comments[0].id.equals(commentId)).toBe(true);
+    });
+
+    it('should require justification for cancel', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      expect(() => task.cancelWithJustification('')).toThrow('Cancel justification is required');
+    });
+  });
+
+  describe('comments', () => {
+    it('should add a comment', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      const comment = task.addComment('This is a comment');
+
+      expect(task.comments.length).toBe(1);
+      expect(comment.content).toBe('This is a comment');
+      expect(comment.skipJustification).toBe(false);
+    });
+
+    it('should delete a comment', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+      const comment = task.addComment('To be deleted');
+
+      task.deleteComment(comment.id);
+
+      expect(task.comments.length).toBe(0);
+    });
+
+    it('should update a comment', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+      const comment = task.addComment('Original');
+
+      task.updateComment(comment.id, 'Updated');
+
+      expect(task.comments[0].content).toBe('Updated');
+    });
+  });
+
+  describe('manual sessions', () => {
+    it('should add a manual session with custom duration', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+      const sessionDate = new Date('2024-01-15T10:00:00Z');
+
+      const session = task.addManualSession({
+        duration: 30, // 30 minutes
+        date: sessionDate,
+        focusLevel: FocusLevel.focused(),
+        note: 'Worked on this earlier',
+      });
+
+      expect(session.isCompleted()).toBe(true);
+      expect(session.focusLevel?.isFocused()).toBe(true);
+      expect(session.getDurationMinutes()).toBe(30);
+      expect(task.sessions.length).toBe(1);
+    });
+
+    it('should validate duration range (1-480 minutes)', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      expect(() => task.addManualSession({
+        duration: 0,
+        date: new Date(),
+        focusLevel: FocusLevel.neutral(),
+      })).toThrow('Duration must be between 1 and 480 minutes');
+
+      expect(() => task.addManualSession({
+        duration: 500,
+        date: new Date(),
+        focusLevel: FocusLevel.neutral(),
+      })).toThrow('Duration must be between 1 and 480 minutes');
+    });
+
+    it('should not add manual session to completed task', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+      task.complete();
+
+      expect(() => task.addManualSession({
+        duration: 25,
+        date: new Date(),
+        focusLevel: FocusLevel.neutral(),
+      })).toThrow('Cannot modify a completed or canceled task');
+    });
+  });
+
+  describe('task age', () => {
+    it('should calculate task age in days', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      // Mock: task created 5 days ago
+      const fiveDaysLater = new Date(task.createdAt.getTime() + 5 * 24 * 60 * 60 * 1000);
+
+      expect(task.getAge(fiveDaysLater)).toBe(5);
+    });
+
+    it('should return 0 for task created today', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 1 },
+      });
+
+      expect(task.getAge()).toBe(0);
+    });
+  });
+
+  describe('total points', () => {
+    it('should calculate total points across all tags', () => {
+      const task = Task.create({
+        title: 'Test',
+        tagPoints: { 'tag-1': 3, 'tag-2': 5, 'tag-3': 1 },
+      });
+
+      expect(task.getTotalPoints()).toBe(9);
+    });
+  });
 });

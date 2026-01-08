@@ -1,16 +1,25 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useStore, useSelector } from 'statux';
 import type { RoutineDTO, AppState } from '../../store';
+import {
+  loadDemoDataToStorage,
+  resetAllData,
+  downloadBackup,
+  importBackup,
+  BackupData
+} from '../../services/demoDataService';
 
 export function Drawer() {
   const routines = useSelector<RoutineDTO[]>('routines');
   const [ui, setUi] = useStore<AppState['ui']>('ui');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleRoutineSelect = (routineId: string | null) => {
     setUi(prev => ({
       ...prev,
       manualRoutineId: routineId
     }));
+    closeDrawer();
   };
 
   const openModal = (modalName: keyof AppState['ui']['modals']) => {
@@ -18,12 +27,57 @@ export function Drawer() {
       ...prev,
       modals: { ...prev.modals, [modalName]: true }
     }));
+    closeDrawer();
+  };
+
+  const closeDrawer = () => {
+    const drawer = document.getElementById('main-drawer') as HTMLInputElement;
+    if (drawer) drawer.checked = false;
+  };
+
+  const handleLoadDemoData = () => {
+    loadDemoDataToStorage();
+    closeDrawer();
+    window.location.reload();
+  };
+
+  const handleResetAllData = () => {
+    if (confirm('This will delete ALL your data. Are you sure?')) {
+      resetAllData();
+      closeDrawer();
+      window.location.reload();
+    }
+  };
+
+  const handleExportBackup = () => {
+    downloadBackup();
+  };
+
+  const handleImportBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const backup = JSON.parse(e.target?.result as string) as BackupData;
+        if (importBackup(backup)) {
+          closeDrawer();
+          window.location.reload();
+        } else {
+          alert('Failed to import backup. Invalid format.');
+        }
+      } catch {
+        alert('Failed to parse backup file.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
     <div className="drawer-side z-20">
       <label htmlFor="main-drawer" className="drawer-overlay" aria-label="close sidebar"></label>
-      <div className="menu bg-base-100 min-h-full w-80 p-4">
+      <div className="menu bg-base-100 min-h-full w-80 p-4 flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
           <ion-icon name="checkbox-outline" class="text-2xl text-primary"></ion-icon>
@@ -32,7 +86,7 @@ export function Drawer() {
 
         {/* Routine Selector */}
         <div className="mb-6">
-          <div className="text-sm font-medium opacity-60 mb-2">Routine</div>
+          <p className="text-xs font-medium opacity-50 uppercase mb-2">Active Routine</p>
           <div className="space-y-1">
             {/* Auto Mode */}
             <button
@@ -85,7 +139,7 @@ export function Drawer() {
               onClick={() => openModal('tags')}
             >
               <ion-icon name="pricetags-outline"></ion-icon>
-              Tags
+              Manage Tags
             </button>
           </li>
           <li>
@@ -94,7 +148,7 @@ export function Drawer() {
               onClick={() => openModal('routines')}
             >
               <ion-icon name="time-outline"></ion-icon>
-              Routines
+              Manage Routines
             </button>
           </li>
           <li>
@@ -102,19 +156,22 @@ export function Drawer() {
               className="btn btn-ghost btn-sm justify-start gap-2 w-full"
               onClick={() => openModal('import')}
             >
-              <ion-icon name="cloud-upload-outline"></ion-icon>
-              Import Tasks
+              <ion-icon name="document-text-outline"></ion-icon>
+              Import Tasks from Text
             </button>
           </li>
           <li>
-            <a href="/settings" className="btn btn-ghost btn-sm justify-start gap-2 w-full">
+            <button
+              className="btn btn-ghost btn-sm justify-start gap-2 w-full"
+              onClick={() => openModal('settings')}
+            >
               <ion-icon name="settings-outline"></ion-icon>
               Settings
-            </a>
+            </button>
           </li>
         </ul>
 
-        {/* Sprint Health Summary (placeholder) */}
+        {/* Sprint Health Summary */}
         <div className="divider text-xs opacity-50 mt-6">Sprint Health</div>
         <div className="card bg-base-200">
           <div className="card-body p-3">
@@ -131,25 +188,67 @@ export function Drawer() {
           </div>
         </div>
 
-        {/* Dev Tools (collapsible) */}
-        <div className="collapse collapse-arrow mt-6">
-          <input type="checkbox" />
-          <div className="collapse-title text-sm font-medium opacity-60 px-0">
-            Dev Tools
-          </div>
-          <div className="collapse-content px-0">
-            <div className="space-y-2">
-              <button className="btn btn-xs btn-outline btn-block">
-                Load Demo Data
-              </button>
-              <button className="btn btn-xs btn-outline btn-error btn-block">
-                Reset All Data
-              </button>
-              <button className="btn btn-xs btn-outline btn-block">
-                Export Backup
-              </button>
+        {/* Dev Tools (collapsible) - pushed to bottom */}
+        <div className="mt-auto pt-4">
+          <details className="collapse collapse-arrow bg-base-200 rounded-lg">
+            <summary className="collapse-title text-xs font-medium py-2 min-h-0">
+              <span className="flex items-center gap-2">
+                <ion-icon name="code-slash-outline"></ion-icon>
+                Dev Tools
+              </span>
+            </summary>
+            <div className="collapse-content px-2">
+              <div className="space-y-2 pt-2">
+                <button
+                  className="btn btn-sm btn-block btn-ghost justify-start gap-2"
+                  onClick={() => openModal('import')}
+                >
+                  <ion-icon name="document-text-outline"></ion-icon>
+                  Import Tasks from Text
+                </button>
+
+                <div className="divider my-1 text-xs opacity-50">Backup</div>
+
+                <button
+                  className="btn btn-sm btn-block btn-ghost justify-start gap-2"
+                  onClick={handleExportBackup}
+                >
+                  <ion-icon name="cloud-download-outline"></ion-icon>
+                  Export Backup
+                </button>
+
+                <label className="btn btn-sm btn-block btn-ghost justify-start gap-2 cursor-pointer">
+                  <ion-icon name="cloud-upload-outline"></ion-icon>
+                  Import Backup
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportBackup}
+                    className="hidden"
+                  />
+                </label>
+
+                <div className="divider my-1 text-xs opacity-50">Data</div>
+
+                <button
+                  className="btn btn-sm btn-block btn-ghost justify-start gap-2"
+                  onClick={handleLoadDemoData}
+                >
+                  <ion-icon name="download-outline"></ion-icon>
+                  Load Demo Data
+                </button>
+
+                <button
+                  className="btn btn-sm btn-block btn-ghost justify-start gap-2 text-error"
+                  onClick={handleResetAllData}
+                >
+                  <ion-icon name="trash-outline"></ion-icon>
+                  Reset All Data
+                </button>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
       </div>
     </div>

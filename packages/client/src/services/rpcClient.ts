@@ -95,7 +95,26 @@ export const sessionApi = {
     rpc.call('session.end', { taskId, sessionId, focusLevel })
 };
 
+// Tag methods
+export const tagApi = {
+  create: (params: {
+    name: string;
+    icon?: string;
+    color?: string;
+    defaultCapacity?: number;
+  }) => rpc.call<TagDTO>('tag.create', params),
+
+  getAll: () => rpc.call<{ tags: TagDTO[] }>('tag.getAll', {})
+};
+
 // DTOs
+export interface TagDTO {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  defaultCapacity: number;
+}
 export interface TaskDTO {
   id: string;
   title: string;

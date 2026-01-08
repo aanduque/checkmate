@@ -8,6 +8,7 @@ import { RpcServer } from './rpc/RpcServer';
 import { HttpRpcServer } from './rpc/HttpRpcServer';
 import { registerTaskMethods } from './methods/taskMethods';
 import { registerSessionMethods } from './methods/sessionMethods';
+import { registerTagMethods } from './methods/tagMethods';
 
 // Application handlers
 import {
@@ -18,7 +19,9 @@ import {
   StartSessionHandler,
   EndSessionHandler,
   GetKanbanBoardHandler,
-  GetFocusTaskHandler
+  GetFocusTaskHandler,
+  CreateTagHandler,
+  GetAllTagsHandler
 } from '@checkmate/application';
 
 // Infrastructure repositories
@@ -80,7 +83,9 @@ const handlers = {
   startSessionHandler: new StartSessionHandler(taskRepository),
   endSessionHandler: new EndSessionHandler(taskRepository),
   getKanbanBoardHandler: new GetKanbanBoardHandler(taskRepository, sprintRepository, tagRepository),
-  getFocusTaskHandler: new GetFocusTaskHandler(taskRepository, orderingService)
+  getFocusTaskHandler: new GetFocusTaskHandler(taskRepository, orderingService),
+  createTagHandler: new CreateTagHandler(tagRepository),
+  getAllTagsHandler: new GetAllTagsHandler(tagRepository)
 };
 
 // Create RPC server
@@ -89,6 +94,7 @@ const rpcServer = new RpcServer();
 // Register methods
 registerTaskMethods(rpcServer, handlers);
 registerSessionMethods(rpcServer, handlers);
+registerTagMethods(rpcServer, handlers);
 
 // Start HTTP server
 const PORT = parseInt(process.env.PORT || '3001', 10);

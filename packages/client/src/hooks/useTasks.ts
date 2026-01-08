@@ -131,8 +131,42 @@ export function useTasks() {
   );
 
   const addComment = useCallback(
-    async (taskId: string, text: string) => {
-      const result = await api.tasks.addComment(taskId, text);
+    async (taskId: string, content: string) => {
+      const result = await api.tasks.addComment(taskId, content);
+      setTasks((prev: Task[]) =>
+        prev.map((t) => (t.id === taskId ? result.task : t))
+      );
+      return result.task;
+    },
+    [setTasks]
+  );
+
+  const deleteComment = useCallback(
+    async (taskId: string, commentId: string) => {
+      const result = await api.tasks.deleteComment(taskId, commentId);
+      setTasks((prev: Task[]) =>
+        prev.map((t) => (t.id === taskId ? result.task : t))
+      );
+      return result.task;
+    },
+    [setTasks]
+  );
+
+  const addManualSession = useCallback(
+    async (
+      taskId: string,
+      durationMinutes: number,
+      focusLevel: string,
+      note?: string,
+      date?: string
+    ) => {
+      const result = await api.tasks.addManualSession(
+        taskId,
+        durationMinutes,
+        focusLevel,
+        note,
+        date
+      );
       setTasks((prev: Task[]) =>
         prev.map((t) => (t.id === taskId ? result.task : t))
       );
@@ -185,6 +219,8 @@ export function useTasks() {
     skipTaskForDay,
     clearSkipState,
     addComment,
+    deleteComment,
+    addManualSession,
     spawnInstance,
     getTaskById,
   };

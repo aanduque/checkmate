@@ -1,4 +1,5 @@
 import { serve } from 'bun';
+import { join } from 'path';
 import { RpcServer } from './rpc/RpcServer';
 import { RpcRequest, RpcErrorCodes } from './rpc/types';
 import { handleError } from './middleware/errorHandler';
@@ -15,6 +16,7 @@ import {
   FilterExpressionEvaluator,
   JsonExporter,
   JsonImporter,
+  FilePersistence,
 } from '@checkmate/infrastructure';
 import { Tag, Sprint, Routine, SprintService } from '@checkmate/domain';
 
@@ -24,9 +26,51 @@ const tagRepository = new InMemoryTagRepository();
 const sprintRepository = new InMemorySprintRepository();
 const routineRepository = new InMemoryRoutineRepository();
 
+// Initialize file persistence
+const DATA_FILE = process.env.DATA_FILE || join(process.cwd(), 'data', 'checkmate.json');
+const persistence = new FilePersistence(DATA_FILE);
+
 // Initialize services
 const filterEvaluator = new FilterExpressionEvaluator();
 const sprintService = new SprintService();
+
+// Auto-save function (debounced)
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+function scheduleSave() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  saveTimeout = setTimeout(async () => {
+    const exporter = new JsonExporter(
+      taskRepository,
+      tagRepository,
+      sprintRepository,
+      routineRepository
+    );
+    const data = await exporter.export();
+    persistence.save(data);
+    console.log('Data auto-saved');
+  }, 1000); // Save after 1 second of inactivity
+}
+
+// Load persisted data on startup
+async function loadPersistedData(): Promise<boolean> {
+  const data = persistence.load();
+  if (data) {
+    const importer = new JsonImporter(
+      taskRepository,
+      tagRepository,
+      sprintRepository,
+      routineRepository
+    );
+    const result = await importer.import(data);
+    if (result.success) {
+      console.log(`Loaded persisted data: ${result.tasksImported} tasks, ${result.tagsImported} tags, ${result.sprintsImported} sprints, ${result.routinesImported} routines`);
+      return true;
+    }
+  }
+  return false;
+}
 
 // Initialize default data
 async function initializeDefaults() {
@@ -140,7 +184,35 @@ rpcServer.register('data.reset', async () => {
 // Start server
 const PORT = parseInt(process.env.PORT || '3000');
 
-await initializeDefaults();
+// Try to load persisted data, otherwise initialize defaults
+const hasPersistedData = await loadPersistedData();
+if (!hasPersistedData) {
+  await initializeDefaults();
+  scheduleSave(); // Save initial data
+} else {
+  // Ensure sprints exist even with persisted data
+  const existingSprints = await sprintRepository.findAll();
+  const newSprints = sprintService.ensureSprintsExist(existingSprints);
+  if (newSprints.length > 0) {
+    for (const sprint of newSprints) {
+      await sprintRepository.save(sprint);
+    }
+    scheduleSave();
+  }
+}
+
+// Methods that trigger auto-save
+const MUTATION_METHODS = new Set([
+  'task.create', 'task.complete', 'task.cancel', 'task.update',
+  'task.moveToSprint', 'task.moveToBacklog', 'task.skipForNow',
+  'task.skipForDay', 'task.clearSkipState', 'task.startSession',
+  'task.completeSession', 'task.abandonSession', 'task.addManualSession',
+  'task.addComment', 'task.deleteComment', 'task.spawnInstance',
+  'tag.create', 'tag.update', 'tag.delete',
+  'sprint.setCapacityOverride', 'sprint.clearCapacityOverride',
+  'routine.create', 'routine.update', 'routine.delete',
+  'data.import', 'data.reset',
+]);
 
 serve({
   port: PORT,
@@ -168,6 +240,11 @@ serve({
       // Handle batch requests
       if (Array.isArray(body)) {
         const responses = await rpcServer.handleBatch(body as RpcRequest[]);
+        // Check if any mutation methods were called
+        const hasMutation = body.some((req: RpcRequest) => MUTATION_METHODS.has(req.method));
+        if (hasMutation) {
+          scheduleSave();
+        }
         return new Response(JSON.stringify(responses), {
           headers: {
             'Content-Type': 'application/json',
@@ -197,6 +274,10 @@ serve({
       }
 
       const response = await rpcServer.handle(body as RpcRequest);
+      // Trigger auto-save for mutation methods
+      if (MUTATION_METHODS.has(body.method) && !response.error) {
+        scheduleSave();
+      }
       return new Response(JSON.stringify(response), {
         headers: {
           'Content-Type': 'application/json',

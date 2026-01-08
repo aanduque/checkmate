@@ -11,7 +11,11 @@ import {
   StartSessionCommand,
   CompleteSessionCommand,
   AbandonSessionCommand,
+  AddManualSessionCommand,
   SpawnInstanceCommand,
+  UpdateTaskCommand,
+  AddCommentCommand,
+  DeleteCommentCommand,
   GetTaskQuery,
   GetTasksQuery,
   GetBacklogTasksQuery,
@@ -82,6 +86,26 @@ export function createTaskMethods(
 
     'task.spawnInstance': async (params) => {
       const command = new SpawnInstanceCommand(taskRepository);
+      return command.execute(params as any);
+    },
+
+    'task.addManualSession': async (params) => {
+      const command = new AddManualSessionCommand(taskRepository);
+      return command.execute(params as any);
+    },
+
+    'task.update': async (params) => {
+      const command = new UpdateTaskCommand(taskRepository);
+      return command.execute(params as any);
+    },
+
+    'task.addComment': async (params) => {
+      const command = new AddCommentCommand(taskRepository);
+      return command.execute(params as any);
+    },
+
+    'task.deleteComment': async (params) => {
+      const command = new DeleteCommentCommand(taskRepository);
       return command.execute(params as any);
     },
 

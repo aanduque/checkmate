@@ -97,8 +97,26 @@ export const api = {
     update: (taskId: string, params: { title?: string; tagPoints?: Record<string, number> }) =>
       rpcCall<{ task: any }>('task.update', { taskId, ...params }),
 
-    addComment: (taskId: string, text: string) =>
-      rpcCall<{ task: any }>('task.addComment', { taskId, text }),
+    addComment: (taskId: string, content: string) =>
+      rpcCall<{ task: any }>('task.addComment', { taskId, content }),
+
+    deleteComment: (taskId: string, commentId: string) =>
+      rpcCall<{ task: any }>('task.deleteComment', { taskId, commentId }),
+
+    addManualSession: (
+      taskId: string,
+      durationMinutes: number,
+      focusLevel: string,
+      note?: string,
+      date?: string
+    ) =>
+      rpcCall<{ task: any; sessionId: string }>('task.addManualSession', {
+        taskId,
+        durationMinutes,
+        focusLevel,
+        note,
+        date,
+      }),
 
     complete: (taskId: string) =>
       rpcCall<{ task: any }>('task.complete', { taskId }),

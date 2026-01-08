@@ -101,3 +101,33 @@ export class AbandonSessionCommand {
     };
   }
 }
+
+export class AddManualSessionCommand {
+  constructor(private readonly taskRepository: ITaskRepository) {}
+
+  async execute(input: AddManualSessionInput): Promise<SessionOutput> {
+    const taskId = TaskId.fromString(input.taskId);
+    const task = await this.taskRepository.findById(taskId);
+
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    const focusLevel = FocusLevel.create(input.focusLevel);
+    const date = input.date ? new Date(input.date) : new Date();
+
+    const session = task.addManualSession({
+      duration: input.durationMinutes,
+      date,
+      focusLevel,
+      note: input.note,
+    });
+
+    await this.taskRepository.save(task);
+
+    return {
+      task: task.toData(),
+      sessionId: session.id.toString(),
+    };
+  }
+}

@@ -34,12 +34,22 @@ export {
   StartSessionCommand,
   CompleteSessionCommand,
   AbandonSessionCommand,
+  AddManualSessionCommand,
   type StartSessionInput,
   type CompleteSessionInput,
   type AbandonSessionInput,
   type AddManualSessionInput,
   type SessionOutput,
 } from './commands/SessionCommand';
+export {
+  UpdateTaskCommand,
+  AddCommentCommand,
+  DeleteCommentCommand,
+  type UpdateTaskInput,
+  type AddCommentInput,
+  type DeleteCommentInput,
+  type UpdateTaskOutput,
+} from './commands/UpdateTaskCommand';
 export {
   CreateTagCommand,
   UpdateTagCommand,

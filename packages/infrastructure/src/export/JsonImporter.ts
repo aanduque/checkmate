@@ -102,4 +102,39 @@ export class JsonImporter {
   parseFromString(jsonString: string): ExportData {
     return JSON.parse(jsonString);
   }
+
+  validate(data: any): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!data || typeof data !== 'object') {
+      errors.push('Invalid data format');
+      return { valid: false, errors };
+    }
+
+    if (!data.version) {
+      errors.push('Missing version field');
+    }
+
+    if (!data.exportedAt) {
+      errors.push('Missing exportedAt field');
+    }
+
+    if (!Array.isArray(data.tasks)) {
+      errors.push('Missing or invalid tasks field');
+    }
+
+    if (!Array.isArray(data.tags)) {
+      errors.push('Missing or invalid tags field');
+    }
+
+    if (!Array.isArray(data.sprints)) {
+      errors.push('Missing or invalid sprints field');
+    }
+
+    if (!Array.isArray(data.routines)) {
+      errors.push('Missing or invalid routines field');
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
 }

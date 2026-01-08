@@ -358,6 +358,43 @@ describe('Task', () => {
     });
   });
 
+  describe('removeComment', () => {
+    it('should remove a comment by id', () => {
+      const task = Task.create({ title: 'Test', tagPoints: validTagPoints });
+      const { task: taskWithComment, comment } = task.addComment('My comment');
+
+      expect(taskWithComment.comments).toHaveLength(1);
+
+      const taskWithoutComment = taskWithComment.removeComment(comment.id);
+
+      expect(taskWithoutComment.comments).toHaveLength(0);
+    });
+
+    it('should throw if comment not found', () => {
+      const task = Task.create({ title: 'Test', tagPoints: validTagPoints });
+
+      expect(() => task.removeComment('non-existent')).toThrow('Comment not found');
+    });
+
+    it('should throw if comment is a skip justification', () => {
+      const task = Task.create({ title: 'Test', tagPoints: validTagPoints });
+      const { task: skippedTask, comment } = task.skipForDay('Reason');
+
+      expect(() => skippedTask.removeComment(comment.id)).toThrow(
+        'Cannot delete skip justification comment'
+      );
+    });
+
+    it('should throw if comment is a cancel justification', () => {
+      const task = Task.create({ title: 'Test', tagPoints: validTagPoints });
+      const { task: canceledTask, comment } = task.cancel('Reason');
+
+      expect(() => canceledTask.removeComment(comment.id)).toThrow(
+        'Cannot delete cancel justification comment'
+      );
+    });
+  });
+
   describe('fromObject / toObject', () => {
     it('should serialize and deserialize a task', () => {
       const task = Task.create({

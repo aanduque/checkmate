@@ -1,6 +1,10 @@
 // Domain Layer - Pure Business Logic
 // No external dependencies
 
+// Ports (Interfaces for Infrastructure)
+export * from './ports/IFilterExpressionEvaluator';
+export * from './ports/IRecurrenceCalculator';
+
 // Value Objects
 export * from './value-objects/TaskId';
 export * from './value-objects/Points';
@@ -30,6 +34,8 @@ export * from './repositories/ICommentRepository';
 export * from './services/SprintHealthCalculator';
 export * from './services/TaskOrderingService';
 export * from './services/StatsCalculator';
+export * from './services/ActiveRoutineDeterminer';
+export * from './services/RecurringTaskSpawner';
 
 // Events
 export * from './events/DomainEvent';

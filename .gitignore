@@ -6,11 +6,16 @@ node_modules/
 dist/
 **/dist/
 
-# Generated files (in src directories - TypeScript compile output)
-src/**/*.js
-src/**/*.js.map
-**/*.d.ts.map
-!src/types/*.d.ts
+# Generated files (TypeScript compile output in src/tests directories)
+**/src/**/*.js
+**/src/**/*.js.map
+**/src/**/*.d.ts
+**/src/**/*.d.ts.map
+**/tests/**/*.js
+**/tests/**/*.js.map
+**/tests/**/*.d.ts
+**/tests/**/*.d.ts.map
+!**/src/types/*.d.ts
 !vite.config.ts
 !vitest.config.ts
 !postcss.config.js

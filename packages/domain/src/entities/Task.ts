@@ -361,6 +361,23 @@ export class Task {
     return { task, comment };
   }
 
+  removeComment(commentId: string): Task {
+    const comment = this._comments.find(c => c.id === commentId);
+    if (!comment) {
+      throw new Error('Comment not found');
+    }
+    if (comment.isSkipJustification) {
+      throw new Error('Cannot delete skip justification comment');
+    }
+    if (comment.isCancelJustification) {
+      throw new Error('Cannot delete cancel justification comment');
+    }
+
+    return this.withUpdates({
+      comments: this._comments.filter(c => c.id !== commentId)
+    });
+  }
+
   // === Sessions ===
 
   addSession(session: Session): Task {

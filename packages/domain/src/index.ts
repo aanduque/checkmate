@@ -24,6 +24,7 @@ export * from './repositories/ITaskRepository';
 export * from './repositories/ITagRepository';
 export * from './repositories/ISprintRepository';
 export * from './repositories/IRoutineRepository';
+export * from './repositories/ICommentRepository';
 
 // Domain Services
 export * from './services/SprintHealthCalculator';

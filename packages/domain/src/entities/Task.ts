@@ -9,6 +9,7 @@ import { TaskStatus, TaskStatusType } from '../value-objects/TaskStatus';
 import { TagPoints } from '../value-objects/TagPoints';
 import { TaskLocation, TaskLocationObject } from '../value-objects/TaskLocation';
 import { SkipState, SkipStateObject } from '../value-objects/SkipState';
+import { FocusLevel } from '../value-objects/FocusLevel';
 import { Comment, CommentObject } from './Comment';
 import { Session, SessionObject } from './Session';
 
@@ -373,6 +374,55 @@ export class Task {
       s.id === sessionId ? updatedSession : s
     );
     return this.withUpdates({ sessions });
+  }
+
+  /**
+   * Start a new focus session
+   */
+  startSession(durationMinutes: number = 25): { task: Task; sessionId: string } {
+    if (!this._status.isActive()) {
+      throw new Error('Cannot start session on inactive task');
+    }
+
+    // Check if there's already an active session
+    const activeSession = this._sessions.find(s => s.status.isInProgress());
+    if (activeSession) {
+      throw new Error('Task already has an active session');
+    }
+
+    const session = Session.start(this._id);
+    const task = this.withUpdates({
+      sessions: [...this._sessions, session]
+    });
+    return { task, sessionId: session.id };
+  }
+
+  /**
+   * End an active session with focus level
+   */
+  endSession(sessionId: string, focusLevel: FocusLevel): Task {
+    const sessionIndex = this._sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex === -1) {
+      throw new Error('Session not found');
+    }
+
+    const session = this._sessions[sessionIndex];
+    if (!session.status.isInProgress()) {
+      throw new Error('Session is not active');
+    }
+
+    const completedSession = session.complete(focusLevel.value);
+    const sessions = [...this._sessions];
+    sessions[sessionIndex] = completedSession;
+
+    return this.withUpdates({ sessions });
+  }
+
+  /**
+   * Get the active session if one exists
+   */
+  getActiveSession(): Session | null {
+    return this._sessions.find(s => s.status.isInProgress()) || null;
   }
 
   // === Serialization ===

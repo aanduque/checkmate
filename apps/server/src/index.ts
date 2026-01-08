@@ -12,6 +12,7 @@ import { registerTagMethods } from './methods/tagMethods';
 import { registerSprintMethods } from './methods/sprintMethods';
 import { registerStatsMethods } from './methods/statsMethods';
 import { registerRoutineMethods } from './methods/routineMethods';
+import { registerDevToolsMethods } from './methods/devtoolsMethods';
 
 // Application handlers
 import {
@@ -64,37 +65,15 @@ import {
 // Domain services
 import { TaskOrderingService, StatsCalculator } from '@checkmate/domain';
 
-// In-memory storage for server-side (simulating localStorage)
-class MemoryStorage implements Storage {
-  private data: Map<string, string> = new Map();
+// File-based storage for persistence
+import { FileStorage } from './storage/FileStorage';
+import { join } from 'path';
 
-  get length(): number {
-    return this.data.size;
-  }
+// Create storage - persists to .data/storage.json in the server directory
+const dataDir = process.env.DATA_DIR || join(process.cwd(), '.data');
+const storage = new FileStorage(join(dataDir, 'storage.json'));
 
-  key(index: number): string | null {
-    return Array.from(this.data.keys())[index] ?? null;
-  }
-
-  getItem(key: string): string | null {
-    return this.data.get(key) ?? null;
-  }
-
-  setItem(key: string, value: string): void {
-    this.data.set(key, value);
-  }
-
-  removeItem(key: string): void {
-    this.data.delete(key);
-  }
-
-  clear(): void {
-    this.data.clear();
-  }
-}
-
-// Create storage
-const storage = new MemoryStorage();
+console.log(`Data storage: ${join(dataDir, 'storage.json')}`);
 
 // Create repositories
 const taskRepository = new LocalStorageTaskRepository(storage);
@@ -163,6 +142,13 @@ registerTagMethods(rpcServer, handlers);
 registerSprintMethods(rpcServer, handlers);
 registerStatsMethods(rpcServer, handlers);
 registerRoutineMethods(rpcServer, handlers);
+registerDevToolsMethods(rpcServer, {
+  taskRepository,
+  tagRepository,
+  sprintRepository,
+  routineRepository,
+  storage
+});
 
 // Start HTTP server
 const PORT = parseInt(process.env.PORT || '3001', 10);

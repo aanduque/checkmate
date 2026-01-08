@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useStore, useSelector } from 'statux';
 import type { RoutineDTO, AppState } from '../../store';
 import {
-  loadDemoDataToStorage,
+  loadDemoData,
   resetAllData,
   downloadBackup,
   importBackup,
@@ -13,6 +13,7 @@ export function Drawer() {
   const routines = useSelector<RoutineDTO[]>('routines');
   const [ui, setUi] = useStore<AppState['ui']>('ui');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleRoutineSelect = (routineId: string | null) => {
     setUi(prev => ({
@@ -35,33 +36,58 @@ export function Drawer() {
     if (drawer) drawer.checked = false;
   };
 
-  const handleLoadDemoData = () => {
-    loadDemoDataToStorage();
-    closeDrawer();
-    window.location.reload();
-  };
-
-  const handleResetAllData = () => {
-    if (confirm('This will delete ALL your data. Are you sure?')) {
-      resetAllData();
-      closeDrawer();
-      window.location.reload();
+  const handleLoadDemoData = async () => {
+    setLoading(true);
+    try {
+      const success = await loadDemoData();
+      if (success) {
+        closeDrawer();
+        window.location.reload();
+      } else {
+        alert('Failed to load demo data');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleExportBackup = () => {
-    downloadBackup();
+  const handleResetAllData = async () => {
+    if (confirm('This will delete ALL your data. Are you sure?')) {
+      setLoading(true);
+      try {
+        const success = await resetAllData();
+        if (success) {
+          closeDrawer();
+          window.location.reload();
+        } else {
+          alert('Failed to reset data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
-  const handleImportBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExportBackup = async () => {
+    setLoading(true);
+    try {
+      await downloadBackup();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
+      setLoading(true);
       try {
         const backup = JSON.parse(e.target?.result as string) as BackupData;
-        if (importBackup(backup)) {
+        const success = await importBackup(backup);
+        if (success) {
           closeDrawer();
           window.location.reload();
         } else {
@@ -69,6 +95,8 @@ export function Drawer() {
         }
       } catch {
         alert('Failed to parse backup file.');
+      } finally {
+        setLoading(false);
       }
     };
     reader.readAsText(file);

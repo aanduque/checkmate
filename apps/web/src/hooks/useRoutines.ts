@@ -7,9 +7,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RoutineDTO, routineApi } from '../services/rpcClient';
 import type { AppState } from '../store';
 
-// Environment flag - set to true to use mock data for development
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
-
 export function useRoutines() {
   const [routines, setRoutines] = useStore<RoutineDTO[]>('routines');
   const [ui, setUi] = useStore<AppState['ui']>('ui');
@@ -17,12 +14,6 @@ export function useRoutines() {
   const [error, setError] = useState<string | null>(null);
 
   const loadRoutines = useCallback(async () => {
-    if (USE_MOCKS) {
-      const { mockRoutines } = await import('../mocks/mockData');
-      setRoutines(mockRoutines);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -97,15 +88,6 @@ export function useRoutines() {
   }, [setUi]);
 
   const createRoutine = useCallback(async (params: Omit<RoutineDTO, 'id'>) => {
-    if (USE_MOCKS) {
-      const newRoutine: RoutineDTO = {
-        ...params,
-        id: `routine-${Date.now()}`
-      };
-      setRoutines(prev => [...prev, newRoutine]);
-      return newRoutine;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -121,13 +103,6 @@ export function useRoutines() {
   }, [setRoutines]);
 
   const updateRoutine = useCallback(async (routineId: string, updates: Partial<RoutineDTO>) => {
-    if (USE_MOCKS) {
-      setRoutines(prev => prev.map(r =>
-        r.id === routineId ? { ...r, ...updates } : r
-      ));
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -144,14 +119,6 @@ export function useRoutines() {
   }, [setRoutines]);
 
   const deleteRoutine = useCallback(async (routineId: string) => {
-    if (USE_MOCKS) {
-      setRoutines(prev => prev.filter(r => r.id !== routineId));
-      if (ui.manualRoutineId === routineId) {
-        setUi(prev => ({ ...prev, manualRoutineId: null }));
-      }
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {

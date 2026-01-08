@@ -7,9 +7,6 @@ import { useCallback, useState, useEffect } from 'react';
 import { DailyStatsDTO, WeeklyStatsDTO, TagDTO, statsApi } from '../services/rpcClient';
 import { useSelector } from 'statux';
 
-// Environment flag - set to true to use mock data for development
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
-
 export function useStats() {
   const [dailyStats, setDailyStats] = useState<DailyStatsDTO | null>(null);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStatsDTO | null>(null);
@@ -22,20 +19,13 @@ export function useStats() {
     setError(null);
 
     try {
-      if (USE_MOCKS) {
-        const { mockDailyStats, mockWeeklyStats } = await import('../mocks/mockData');
-        await new Promise(resolve => setTimeout(resolve, 100));
-        setDailyStats(mockDailyStats);
-        setWeeklyStats(mockWeeklyStats);
-      } else {
-        // Call real RPC
-        const [daily, weekly] = await Promise.all([
-          statsApi.getDaily(),
-          statsApi.getWeekly()
-        ]);
-        setDailyStats(daily);
-        setWeeklyStats(weekly);
-      }
+      // Call real RPC
+      const [daily, weekly] = await Promise.all([
+        statsApi.getDaily(),
+        statsApi.getWeekly()
+      ]);
+      setDailyStats(daily);
+      setWeeklyStats(weekly);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load stats');
     } finally {

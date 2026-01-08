@@ -8,9 +8,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { TaskDTO, taskApi } from '../services/rpcClient';
 import type { AppState } from '../store';
 
-// Environment flag - set to true to use mock data for development
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
-
 export function useTasks() {
   const [tasks, setTasks] = useStore<TaskDTO[]>('tasks');
   const [ui, setUi] = useStore<AppState['ui']>('ui');
@@ -18,13 +15,6 @@ export function useTasks() {
   const [error, setError] = useState<string | null>(null);
 
   const loadTasks = useCallback(async () => {
-    if (USE_MOCKS) {
-      // Import mock data dynamically only when needed
-      const { mockTasks } = await import('../mocks/mockData');
-      setTasks(mockTasks);
-      return mockTasks;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -54,20 +44,6 @@ export function useTasks() {
     tagPoints: Record<string, number>;
     sprintId?: string;
   }) => {
-    if (USE_MOCKS) {
-      const newTask: TaskDTO = {
-        id: `task-${Date.now()}`,
-        title: params.title,
-        status: 'active',
-        tagPoints: params.tagPoints,
-        totalPoints: Object.values(params.tagPoints).reduce((a, b) => a + b, 0),
-        tags: []
-      };
-      setTasks(prev => [...prev, newTask]);
-      setUi(prev => ({ ...prev, refreshKey: prev.refreshKey + 1 }));
-      return newTask;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -85,14 +61,6 @@ export function useTasks() {
   }, [setTasks, setUi, loadTasks]);
 
   const completeTask = useCallback(async (taskId: string) => {
-    if (USE_MOCKS) {
-      setTasks(prev => prev.map(t =>
-        t.id === taskId ? { ...t, status: 'completed' as const } : t
-      ));
-      setUi(prev => ({ ...prev, refreshKey: prev.refreshKey + 1 }));
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -110,14 +78,6 @@ export function useTasks() {
   }, [setTasks, setUi]);
 
   const cancelTask = useCallback(async (taskId: string, justification: string) => {
-    if (USE_MOCKS) {
-      setTasks(prev => prev.map(t =>
-        t.id === taskId ? { ...t, status: 'canceled' as const } : t
-      ));
-      setUi(prev => ({ ...prev, refreshKey: prev.refreshKey + 1 }));
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -139,11 +99,6 @@ export function useTasks() {
     type: 'for_now' | 'for_day',
     justification?: string
   ) => {
-    if (USE_MOCKS) {
-      setUi(prev => ({ ...prev, refreshKey: prev.refreshKey + 1 }));
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -161,14 +116,6 @@ export function useTasks() {
     taskId: string,
     updates: { title?: string; description?: string; tagPoints?: Record<string, number> }
   ) => {
-    if (USE_MOCKS) {
-      setTasks(prev => prev.map(t =>
-        t.id === taskId ? { ...t, ...updates } : t
-      ));
-      setUi(prev => ({ ...prev, refreshKey: prev.refreshKey + 1 }));
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -186,11 +133,6 @@ export function useTasks() {
   }, [setTasks, setUi]);
 
   const moveTask = useCallback(async (taskId: string, sprintId?: string) => {
-    if (USE_MOCKS) {
-      setUi(prev => ({ ...prev, refreshKey: prev.refreshKey + 1 }));
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {

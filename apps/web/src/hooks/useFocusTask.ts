@@ -8,9 +8,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { FocusTaskDTO, TaskDTO, TagDTO, taskApi, sessionApi, tagApi } from '../services/rpcClient';
 import type { AppState } from '../store';
 
-// Environment flag - set to true to use mock data for development
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
-
 export function useFocusTask() {
   const [focusTask, setFocusTaskRaw] = useStore<FocusTaskDTO | null>('focusTask');
   const [upNext, setUpNextRaw] = useStore<FocusTaskDTO[]>('upNext');
@@ -36,16 +33,6 @@ export function useFocusTask() {
     setError(null);
 
     try {
-      if (USE_MOCKS) {
-        const { mockFocusTask, mockUpNext, mockTags } = await import('../mocks/mockData');
-        setFocusTask(mockFocusTask);
-        setUpNext(mockUpNext);
-        if (tags.length === 0) {
-          setTags(mockTags);
-        }
-        return { focusTask: mockFocusTask, upNext: mockUpNext };
-      }
-
       // Load tags and focus data in parallel
       const [tagsResult, focusResult] = await Promise.all([
         tags.length === 0 ? tagApi.getAll() : Promise.resolve({ tags }),
@@ -74,33 +61,6 @@ export function useFocusTask() {
 
   const startSession = useCallback(async (taskId: string, durationMinutes?: number) => {
     const duration = durationMinutes || 25;
-
-    if (USE_MOCKS) {
-      const sessionId = `session-${Date.now()}`;
-      setUi(prev => ({
-        ...prev,
-        activeSession: {
-          taskId,
-          sessionId,
-          startedAt: new Date().toISOString(),
-          durationMinutes: duration
-        }
-      }));
-      setFocusTask((prev: FocusTaskDTO | null) => {
-        if (prev && prev.id === taskId) {
-          return {
-            ...prev,
-            activeSession: {
-              id: sessionId,
-              startedAt: new Date(),
-              durationMinutes: duration
-            }
-          };
-        }
-        return prev;
-      });
-      return { sessionId, taskId };
-    }
 
     setLoading(true);
     setError(null);
@@ -142,22 +102,6 @@ export function useFocusTask() {
     sessionId: string,
     focusLevel: 'distracted' | 'neutral' | 'focused'
   ) => {
-    if (USE_MOCKS) {
-      setUi(prev => ({
-        ...prev,
-        activeSession: null,
-        sessionElapsed: 0,
-        modals: { ...prev.modals, completeSession: false }
-      }));
-      setFocusTask((prev: FocusTaskDTO | null) => {
-        if (prev?.activeSession) {
-          return { ...prev, activeSession: undefined };
-        }
-        return prev;
-      });
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -185,21 +129,6 @@ export function useFocusTask() {
   const abandonSession = useCallback(async () => {
     const activeSession = ui.activeSession;
     if (!activeSession) return;
-
-    if (USE_MOCKS) {
-      setUi(prev => ({
-        ...prev,
-        activeSession: null,
-        sessionElapsed: 0
-      }));
-      setFocusTask((prev: FocusTaskDTO | null) => {
-        if (prev?.activeSession) {
-          return { ...prev, activeSession: undefined };
-        }
-        return prev;
-      });
-      return;
-    }
 
     setLoading(true);
     setError(null);

@@ -280,3 +280,27 @@ export interface SprintHealthDTO {
     status: 'on_track' | 'at_risk' | 'off_track';
   }>;
 }
+
+// Dev Tools API
+export const devtoolsApi = {
+  loadDemoData: () =>
+    rpc.call<{ success: boolean; message: string; counts: { tags: number; routines: number; sprints: number; tasks: number } }>('devtools.loadDemoData', {}),
+
+  resetAllData: () =>
+    rpc.call<{ success: boolean; message: string }>('devtools.resetAllData', {}),
+
+  exportBackup: () =>
+    rpc.call<BackupData>('devtools.exportBackup', {}),
+
+  importBackup: (backup: BackupData) =>
+    rpc.call<{ success: boolean; message: string; counts: { tags: number; routines: number; sprints: number; tasks: number } }>('devtools.importBackup', backup)
+};
+
+export interface BackupData {
+  version: number;
+  exportedAt: string;
+  tasks: unknown[];
+  tags: TagDTO[];
+  sprints: SprintDTO[];
+  routines: RoutineDTO[];
+}

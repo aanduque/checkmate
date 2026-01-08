@@ -16,25 +16,14 @@ export interface DevToolsMethodHandlers {
   storage: Storage;
 }
 
-// Generate unique IDs
-const generateId = () => `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-// Get current week's sprint dates
-const getSprintDates = (weeksFromNow: number) => {
+// Get Sunday for a given week offset (0 = this week, 1 = next week, etc.)
+const getSundayForWeek = (weeksFromNow: number): Date => {
   const now = new Date();
-  const dayOfWeek = now.getDay();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - dayOfWeek + (weeksFromNow * 7));
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-
-  return {
-    startDate: startOfWeek,
-    endDate: endOfWeek
-  };
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - dayOfWeek + (weeksFromNow * 7));
+  sunday.setHours(0, 0, 0, 0);
+  return sunday;
 };
 
 export function registerDevToolsMethods(
@@ -97,14 +86,10 @@ export function registerDevToolsMethods(
       routineRepository.save(weekendRoutine)
     ]);
 
-    // Create sprints
-    const currentSprintDates = getSprintDates(0);
-    const nextSprintDates = getSprintDates(1);
-    const followingSprintDates = getSprintDates(2);
-
-    const currentSprint = Sprint.create(currentSprintDates.startDate, currentSprintDates.endDate);
-    const nextSprint = Sprint.create(nextSprintDates.startDate, nextSprintDates.endDate);
-    const followingSprint = Sprint.create(followingSprintDates.startDate, followingSprintDates.endDate);
+    // Create sprints (Sprint.create requires a Sunday date)
+    const currentSprint = Sprint.create(getSundayForWeek(0));
+    const nextSprint = Sprint.create(getSundayForWeek(1));
+    const followingSprint = Sprint.create(getSundayForWeek(2));
 
     await Promise.all([
       sprintRepository.save(currentSprint),
@@ -129,7 +114,7 @@ export function registerDevToolsMethods(
 
 Tap "Done" when you've read this!`,
       tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     const tutorialTask2 = Task.create({
@@ -142,7 +127,7 @@ Tap "Done" when you've read this!`,
 
 Sessions are saved and help you understand where your time goes.`,
       tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     const tutorialTask3 = Task.create({
@@ -155,7 +140,7 @@ Sessions are saved and help you understand where your time goes.`,
 
 Drag tasks between columns to schedule them!`,
       tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     const tutorialTask4 = Task.create({
@@ -167,7 +152,7 @@ Drag tasks between columns to schedule them!`,
 - **Manage Routines**: Set up time-based filters
 - **Dev Tools**: Reset data or reload demo`,
       tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     // Sample work tasks
@@ -175,21 +160,21 @@ Drag tasks between columns to schedule them!`,
       title: 'Review quarterly report',
       description: 'Go through the Q4 numbers and prepare summary.',
       tagPoints: createTagPoints(workTag.id, 3),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     const workTask2 = Task.create({
       title: 'Prepare presentation slides',
       description: 'Create slides for the team meeting.',
       tagPoints: createTagPoints(workTag.id, 2),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     const workTask3 = Task.create({
       title: 'Reply to client emails',
       description: 'Catch up on pending email threads.',
       tagPoints: createTagPoints(workTag.id, 1),
-      location: TaskLocation.inSprint(nextSprint.id)
+      location: TaskLocation.sprint(nextSprint.id)
     });
 
     // Sample personal/health tasks
@@ -197,21 +182,21 @@ Drag tasks between columns to schedule them!`,
       title: 'Morning workout',
       description: '30 min cardio + stretching',
       tagPoints: createTagPoints(healthTag.id, 2),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     const personalTask = Task.create({
       title: 'Grocery shopping',
       description: 'Weekly groceries - check the list in the fridge.',
       tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.inSprint(currentSprint.id)
+      location: TaskLocation.sprint(currentSprint.id)
     });
 
     const learningTask = Task.create({
       title: 'Read a chapter of current book',
       description: 'Continue reading "Atomic Habits"',
       tagPoints: createTagPoints(learningTag.id, 1),
-      location: TaskLocation.inSprint(nextSprint.id)
+      location: TaskLocation.sprint(nextSprint.id)
     });
 
     // Backlog tasks

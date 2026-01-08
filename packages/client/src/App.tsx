@@ -91,7 +91,7 @@ function AppContent() {
 
 export function App() {
   return (
-    <Store state={initialState}>
+    <Store {...initialState}>
       <AppContent />
     </Store>
   );

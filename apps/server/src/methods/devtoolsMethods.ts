@@ -6,7 +6,7 @@
 
 import type { RpcServer } from '../rpc/RpcServer';
 import type { ITaskRepository, ITagRepository, ISprintRepository, IRoutineRepository } from '@checkmate/domain';
-import { Task, Tag, Sprint, Routine, TaskLocation, TagPoints, TagId } from '@checkmate/domain';
+import { Task, Tag, Sprint, Routine } from '@checkmate/domain';
 
 export interface DevToolsMethodHandlers {
   taskRepository: ITaskRepository;
@@ -97,10 +97,8 @@ export function registerDevToolsMethods(
       sprintRepository.save(followingSprint)
     ]);
 
-    // Create tasks
-    const createTagPoints = (tagId: string, points: number): TagPoints => {
-      return TagPoints.create({ [tagId]: points });
-    };
+    // Create tasks - Task.create expects Record<string, number> for tagPoints
+    // Tasks are created in backlog, then moved to sprint with moveToSprint()
 
     // Tutorial tasks (current sprint)
     const tutorialTask1 = Task.create({
@@ -113,9 +111,8 @@ export function registerDevToolsMethods(
 - Track time with focus sessions
 
 Tap "Done" when you've read this!`,
-      tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [personalTag.id]: 1 }
+    }).moveToSprint(currentSprint.id);
 
     const tutorialTask2 = Task.create({
       title: 'Try starting a Focus session (tap the play button)',
@@ -126,9 +123,8 @@ Tap "Done" when you've read this!`,
 3. When done, tap Complete to log your time
 
 Sessions are saved and help you understand where your time goes.`,
-      tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [personalTag.id]: 1 }
+    }).moveToSprint(currentSprint.id);
 
     const tutorialTask3 = Task.create({
       title: 'Switch to Tasks view to see the Kanban board',
@@ -139,9 +135,8 @@ Sessions are saved and help you understand where your time goes.`,
 - **Next Week**: Upcoming sprint tasks
 
 Drag tasks between columns to schedule them!`,
-      tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [personalTag.id]: 1 }
+    }).moveToSprint(currentSprint.id);
 
     const tutorialTask4 = Task.create({
       title: 'Open the menu (hamburger icon) to explore settings',
@@ -151,67 +146,58 @@ Drag tasks between columns to schedule them!`,
 - **Manage Tags**: Create custom categories
 - **Manage Routines**: Set up time-based filters
 - **Dev Tools**: Reset data or reload demo`,
-      tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [personalTag.id]: 1 }
+    }).moveToSprint(currentSprint.id);
 
     // Sample work tasks
     const workTask1 = Task.create({
       title: 'Review quarterly report',
       description: 'Go through the Q4 numbers and prepare summary.',
-      tagPoints: createTagPoints(workTag.id, 3),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [workTag.id]: 3 }
+    }).moveToSprint(currentSprint.id);
 
     const workTask2 = Task.create({
       title: 'Prepare presentation slides',
       description: 'Create slides for the team meeting.',
-      tagPoints: createTagPoints(workTag.id, 2),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [workTag.id]: 2 }
+    }).moveToSprint(currentSprint.id);
 
     const workTask3 = Task.create({
       title: 'Reply to client emails',
       description: 'Catch up on pending email threads.',
-      tagPoints: createTagPoints(workTag.id, 1),
-      location: TaskLocation.sprint(nextSprint.id)
-    });
+      tagPoints: { [workTag.id]: 1 }
+    }).moveToSprint(nextSprint.id);
 
     // Sample personal/health tasks
     const healthTask = Task.create({
       title: 'Morning workout',
       description: '30 min cardio + stretching',
-      tagPoints: createTagPoints(healthTag.id, 2),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [healthTag.id]: 2 }
+    }).moveToSprint(currentSprint.id);
 
     const personalTask = Task.create({
       title: 'Grocery shopping',
       description: 'Weekly groceries - check the list in the fridge.',
-      tagPoints: createTagPoints(personalTag.id, 1),
-      location: TaskLocation.sprint(currentSprint.id)
-    });
+      tagPoints: { [personalTag.id]: 1 }
+    }).moveToSprint(currentSprint.id);
 
     const learningTask = Task.create({
       title: 'Read a chapter of current book',
       description: 'Continue reading "Atomic Habits"',
-      tagPoints: createTagPoints(learningTag.id, 1),
-      location: TaskLocation.sprint(nextSprint.id)
-    });
+      tagPoints: { [learningTag.id]: 1 }
+    }).moveToSprint(nextSprint.id);
 
-    // Backlog tasks
+    // Backlog tasks (no moveToSprint needed, tasks start in backlog)
     const backlogTask1 = Task.create({
       title: 'Plan vacation itinerary',
       description: 'Research destinations and book accommodations.',
-      tagPoints: createTagPoints(personalTag.id, 2),
-      location: TaskLocation.backlog()
+      tagPoints: { [personalTag.id]: 2 }
     });
 
     const backlogTask2 = Task.create({
       title: 'Learn a new programming language',
       description: 'Start with Rust or Go tutorials.',
-      tagPoints: createTagPoints(learningTag.id, 5),
-      location: TaskLocation.backlog()
+      tagPoints: { [learningTag.id]: 5 }
     });
 
     await Promise.all([

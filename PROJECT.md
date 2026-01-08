@@ -2,7 +2,7 @@
 
 ## Overview
 
-Refactor the Check Mate POC (Proof of Concept) in `index.html` into a production-ready MVP (Minimum Viable Product) using Domain-Driven Design (DDD) principles.
+Refactor the Check Mate POC (Proof of Concept) in `poc/index.html` into a production-ready MVP (Minimum Viable Product) using Domain-Driven Design (DDD) principles.
 
 ## Technology Stack
 
@@ -625,7 +625,7 @@ bun dev
 
 ## References
 
-- POC source: `./index.html`
+- POC source: `./poc/index.html`
 - Crossroad docs: https://github.com/franciscop/crossroad
 - Statux docs: https://github.com/franciscop/statux
 - daisyUI docs: https://daisyui.com

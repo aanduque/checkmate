@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Check Mate is an ADHD-friendly task management application being refactored from a POC (Alpine.js monolith in `index.html`) to a production MVP using Domain-Driven Design (DDD).
+Check Mate is an ADHD-friendly task management application being refactored from a POC (Alpine.js monolith in `poc/index.html`) to a production MVP using Domain-Driven Design (DDD).
 
 ## Technology Stack
 
@@ -36,7 +36,8 @@ checkmate/
 │   ├── shared/           # OpenRPC schema + generated types
 │   ├── server/           # JSON-RPC server (@open-rpc/server-js)
 │   └── client/           # React frontend
-├── index.html            # POC reference (do not modify)
+├── poc/                  # POC reference (read-only)
+│   └── index.html        # Original Alpine.js monolith
 └── PROJECT.md            # Detailed refactoring guide
 ```
 
@@ -237,7 +238,7 @@ LocalStorage keys (POC reference):
 
 ## References
 
-- POC source: `./index.html` (read-only reference)
+- POC source: `./poc/index.html` (read-only reference)
 - Refactoring guide: `./PROJECT.md`
 - Decision log: `./DECISIONLOG.md`
 - Implementation plan: `./IMPLEMENTATION_PLAN.md`

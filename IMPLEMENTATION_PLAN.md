@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document outlines all missing features compared to the POC (`index.html`) and design specifications (`PROJECT.md`, `DESIGN.md`, `CLAUDE.md`).
+This document outlines all missing features compared to the POC (`poc/index.html`) and design specifications (`PROJECT.md`, `DESIGN.md`, `CLAUDE.md`).
 
 **Key Decisions Made (see DECISIONLOG.md):**
 - DEC-021: Crossroad for client-side routing
